@@ -11,9 +11,10 @@ on:
         description: 'Target release tag, defaults to the version'
         required: false
         type: string
-  schedule:
-    # 12:00 in Asia/Hong_Kong; prepare filters out non-month-end dates.
-    - cron: '0 4 28-31 * *'
+  # fork：注释掉上游每月末自动发版的定时任务，仅保留手动与 tag 触发
+  # schedule:
+  #   # 12:00 in Asia/Hong_Kong; prepare filters out non-month-end dates.
+  #   - cron: '0 4 28-31 * *'
   push:
     tags:
       - 'v[0-9]*.[0-9]*.[0-9]*'
