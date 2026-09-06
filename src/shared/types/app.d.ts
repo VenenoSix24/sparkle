@@ -152,7 +152,19 @@ interface AppConfig {
   displayAppName?: boolean
   disableGPU: boolean
   disableAnimation?: boolean
+  networkIPProvider?: NetworkIPProvider
+  networkLatencyTargets?: INetworkLatencyTarget[]
+  networkInfoCardOrder?: NetworkInfoCardKey[]
 }
+
+type NetworkIPProvider = 'ip.sb' | 'ipwho.is' | 'ipapi.is'
+
+interface INetworkLatencyTarget {
+  name: string
+  url: string
+}
+
+type NetworkInfoCardKey = 'ip' | 'topology' | 'latency'
 
 interface ProfileConfig {
   current?: string

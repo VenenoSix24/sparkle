@@ -6,6 +6,7 @@ import {
   DNS,
   Logs,
   Mihomo,
+  Network,
   Override,
   Profiles,
   Proxies,
@@ -71,6 +72,10 @@ const routes = [
   {
     path: '/connections',
     element: startupRoute(<Connections />)
+  },
+  {
+    path: '/network',
+    element: startupRoute(<Network />)
   },
   {
     path: '/override',

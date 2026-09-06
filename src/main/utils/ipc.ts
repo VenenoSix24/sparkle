@@ -1,4 +1,5 @@
 import { app, ipcMain } from 'electron'
+import axios from 'axios'
 import {
   mihomoChangeProxy,
   mihomoCloseConnections,
@@ -342,6 +343,8 @@ export function registerIpcMainHandlers(): void {
   ipcMain.handle('openUWPTool', ipcErrorWrapper(openUWPTool))
   ipcMain.handle('setupFirewall', ipcErrorWrapper(setupFirewall))
   ipcMain.handle('getInterfaces', getInterfaces)
+  ipcMain.handle('fetchIPInfo', (_e, url) => ipcErrorWrapper(fetchIPInfo)(url))
+  ipcMain.handle('measureLatency', (_e, url) => ipcErrorWrapper(measureLatency)(url))
   ipcMain.handle('webdavBackup', ipcErrorWrapper(webdavBackup))
   ipcMain.handle('webdavRestore', (_e, filename) => ipcErrorWrapper(webdavRestore)(filename))
   ipcMain.handle('listWebdavBackups', ipcErrorWrapper(listWebdavBackups))
@@ -427,4 +430,20 @@ export function registerIpcMainHandlers(): void {
     setNotQuitDialog()
     app.quit()
   })
+}
+
+// IP 检测走主进程而非渲染进程，避免受浏览器代理环境与 CORS 影响
+async function fetchIPInfo(url: string): Promise<unknown> {
+  const res = await axios.get<unknown>(url, { timeout: 10000 })
+  return res.data
+}
+
+async function measureLatency(url: string): Promise<number | null> {
+  try {
+    const t0 = Date.now()
+    await axios.get(url, { timeout: 5000 })
+    return Date.now() - t0
+  } catch {
+    return null
+  }
 }

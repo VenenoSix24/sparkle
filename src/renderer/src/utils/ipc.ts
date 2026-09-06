@@ -405,6 +405,14 @@ export async function getInterfaces(): Promise<Record<string, NetworkInterfaceIn
   return ipcErrorWrapper(await window.electron.ipcRenderer.invoke('getInterfaces'))
 }
 
+export async function fetchIPInfo(url: string): Promise<unknown> {
+  return ipcErrorWrapper(await window.electron.ipcRenderer.invoke('fetchIPInfo', url))
+}
+
+export async function measureLatency(url: string): Promise<number | null> {
+  return ipcErrorWrapper(await window.electron.ipcRenderer.invoke('measureLatency', url))
+}
+
 export async function webdavBackup(): Promise<boolean> {
   return ipcErrorWrapper(await window.electron.ipcRenderer.invoke('webdavBackup'))
 }
