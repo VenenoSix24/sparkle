@@ -36,7 +36,7 @@ const ProxySettingDrawer: React.FC<Props> = (props) => {
     delayTestUseGroupApi = false,
     delayTestConcurrency,
     delayTestTimeout,
-    rememberProxyGroupOpenState = false
+    rememberProxyGroupOpenState = true
   } = appConfig || {}
 
   const [url, setUrl] = useState(delayTestUrl ?? '')
