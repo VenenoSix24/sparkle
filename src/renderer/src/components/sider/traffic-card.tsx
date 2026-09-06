@@ -14,7 +14,7 @@ interface Props {
 const TrafficCard: React.FC<Props> = (props) => {
   const { iconOnly } = props
   const { appConfig, patchAppConfig } = useAppConfig()
-  const { enableTrafficLogger = true } = appConfig || {}
+  const { enableTrafficLogger = true, trafficCardStatus = 'col-span-1' } = appConfig || {}
   const location = useLocation()
   const navigate = useNavigate()
   const match = location.pathname.includes('/traffic')
@@ -48,7 +48,7 @@ const TrafficCard: React.FC<Props> = (props) => {
 
   if (iconOnly) {
     return (
-      <div className="flex justify-center">
+      <div className={`${trafficCardStatus} flex justify-center`}>
         <Tooltip content="用量统计" placement="right">
           <Button
             size="sm"
@@ -74,7 +74,7 @@ const TrafficCard: React.FC<Props> = (props) => {
         transition,
         zIndex: isDragging ? 'calc(infinity)' : undefined
       }}
-      className="traffic-card"
+      className={`${trafficCardStatus} traffic-card`}
     >
       <Card
         fullWidth
