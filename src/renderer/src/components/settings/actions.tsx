@@ -210,8 +210,44 @@ const Actions: React.FC = () => {
             退出应用
           </Button>
         </SettingItem>
-        <SettingItem compatKey="legacy" title="应用版本">
+        <SettingItem compatKey="legacy" title="应用版本" divider>
           <div>v{version}</div>
+        </SettingItem>
+        <SettingItem
+          compatKey="legacy"
+          title="版本说明"
+          actions={
+            <Tooltip content="Sparkle · 自用修改版，与上游项目无关">
+              <Button isIconOnly size="sm" variant="light">
+                <IoIosHelpCircle className="text-lg" />
+              </Button>
+            </Tooltip>
+          }
+        >
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onPress={() =>
+                window.electron.ipcRenderer.invoke(
+                  'openExternal',
+                  'https://github.com/VenenoSix24/sparkle'
+                )
+              }
+            >
+              修改版仓库
+            </Button>
+            <Button
+              size="sm"
+              onPress={() =>
+                window.electron.ipcRenderer.invoke(
+                  'openExternal',
+                  'https://github.com/xishang0128/sparkle'
+                )
+              }
+            >
+              上游仓库
+            </Button>
+          </div>
         </SettingItem>
       </SettingCard>
     </>
