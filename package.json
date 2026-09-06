@@ -34,6 +34,7 @@
     "d3": "^7.9.0",
     "dayjs": "^1.11.23",
     "express": "^5.2.1",
+    "flag-icons": "^7.5.0",
     "iconv-lite": "^0.7.3",
     "react-chartjs-2": "^5.3.1",
     "webdav": "^5.10.0",

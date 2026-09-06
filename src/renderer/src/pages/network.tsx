@@ -1,3 +1,4 @@
+import 'flag-icons/css/flag-icons.min.css'
 import BasePage from '@renderer/components/base/base-page'
 import NetworkTopologyCard from '@renderer/components/network/network-topology'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -239,6 +240,16 @@ function latencyBarColor(latency: number | null): string {
   if (latency < 100) return 'bg-success'
   if (latency < 300) return 'bg-warning'
   return 'bg-danger'
+}
+
+const CountryFlag: React.FC<{ code?: string; className?: string }> = ({ code, className }) => {
+  if (!code || code.length !== 2) return null
+  return (
+    <span
+      className={`fi fi-${code.toLowerCase()} rounded-sm ${className ?? ''}`}
+      style={{ fontSize: '1rem', lineHeight: 1 }}
+    />
+  )
 }
 
 const NetworkPage: React.FC = () => {
@@ -535,7 +546,15 @@ const NetworkPage: React.FC = () => {
                       </div>
 
                       {ipInfo.country && (
-                        <InfoRow label="国家/地区" value={<span>{ipInfo.country}</span>} />
+                        <InfoRow
+                          label="国家/地区"
+                          value={
+                            <span className="flex items-center justify-end gap-1.5">
+                              <CountryFlag code={ipInfo.countryCode} />
+                              <span>{ipInfo.country}</span>
+                            </span>
+                          }
+                        />
                       )}
                       {ipInfo.region && <InfoRow label="省份" value={ipInfo.region} />}
                       {ipInfo.city && <InfoRow label="城市" value={ipInfo.city} />}
