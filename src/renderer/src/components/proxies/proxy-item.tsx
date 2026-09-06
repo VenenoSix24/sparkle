@@ -17,6 +17,8 @@ interface Props {
   group: ControllerMixedGroup
   onSelect: (group: string, proxy: string) => void
   selected: boolean
+  resolvedNow?: string
+  coloredTags?: boolean
 }
 
 const isGroup = (
@@ -36,18 +38,18 @@ const TYPE_COLORS: Record<string, string> = {
   vless: 'text-fuchsia-500 bg-fuchsia-500/10',
   trojan: 'text-pink-500 bg-pink-500/10',
   hysteria: 'text-orange-400 bg-orange-400/10',
-  hysteria2: 'text-yellow-500 bg-yellow-500/10',
-  tuic: 'text-teal-500 bg-teal-500/10',
-  wireguard: 'text-emerald-500 bg-emerald-500/10',
-  snell: 'text-amber-500 bg-amber-500/10',
+  hysteria2: 'text-amber-500 bg-amber-500/10',
+  tuic: 'text-cyan-600 bg-cyan-600/10',
+  wireguard: 'text-emerald-400 bg-emerald-400/10',
+  snell: 'text-lime-600 bg-lime-600/10',
   shadowtls: 'text-cyan-500 bg-cyan-500/10',
-  http: 'text-blue-500 bg-blue-500/10',
+  http: 'text-blue-400 bg-blue-400/10',
   socks5: 'text-slate-500 bg-slate-500/10',
   select: 'text-primary bg-primary/10',
-  selector: 'text-primary bg-primary/10',
-  udp: 'text-primary bg-primary/10',
-  urltest: 'text-emerald-500 bg-emerald-500/10',
-  'url-test': 'text-emerald-500 bg-emerald-500/10',
+  selector: 'text-indigo-500 bg-indigo-500/10',
+  udp: 'text-cyan-500 bg-cyan-500/10',
+  urltest: 'text-green-500 bg-green-500/10',
+  'url-test': 'text-green-500 bg-green-500/10',
   fallback: 'text-amber-500 bg-amber-500/10',
   loadbalance: 'text-violet-500 bg-violet-500/10',
   'load-balance': 'text-violet-500 bg-violet-500/10',
@@ -77,7 +79,9 @@ const ProxyItem: React.FC<Props> = (props) => {
     proxy,
     selected,
     onSelect,
-    onProxyDelay
+    onProxyDelay,
+    resolvedNow,
+    coloredTags = true
   } = props
   const shouldShowGroupSelectedProxy =
     showGroupSelectedProxy && isGroup(proxy) && Boolean(proxy.now)
@@ -240,23 +244,21 @@ const ProxyItem: React.FC<Props> = (props) => {
                   <div className="flex items-center gap-1 mt-0.5 overflow-hidden whitespace-nowrap">
                     <ProxyChip
                       label={proxy.type}
-                      className={TYPE_COLORS[proxy.type.toLowerCase()]}
+                      className={coloredTags ? TYPE_COLORS[proxy.type.toLowerCase()] : undefined}
                     />
-                    {!shouldShowGroupSelectedProxy &&
-                      PROXY_PROTOCOLS.filter(
-                        (protocol) => ((proxy as unknown) as Record<string, unknown>)[protocol]
-                      ).map((protocol) => (
-                        <ProxyChip
-                          key={protocol}
-                          label={protocol.toUpperCase()}
-                          className={protocol === 'udp' ? TYPE_COLORS.udp : undefined}
-                        />
-                      ))}
+                    {PROXY_PROTOCOLS.filter(
+                      (protocol) => ((proxy as unknown) as Record<string, unknown>)[protocol]
+                    ).map((protocol) => (
+                      <ProxyChip
+                        key={protocol}
+                        label={protocol.toUpperCase()}
+                        className={coloredTags && protocol === 'udp' ? TYPE_COLORS.udp : undefined}
+                      />
+                    ))}
                     {shouldShowGroupSelectedProxy && (
-                      <>
-                        <span className="text-foreground-500">→</span>
-                        <span className="flag-emoji">{proxy.now}</span>
-                      </>
+                      <span className="text-[10px] leading-none px-1 py-0.5 rounded-md ring-1 ring-inset ring-black/10 dark:ring-white/15 text-primary bg-primary/10 truncate min-w-0">
+                        → {resolvedNow || proxy.now}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -296,7 +298,7 @@ const ProxyItem: React.FC<Props> = (props) => {
                       <span className="inline-flex items-center gap-1 ml-2 align-middle">
                         <ProxyChip
                           label={proxy.type}
-                          className={TYPE_COLORS[proxy.type.toLowerCase()]}
+                          className={coloredTags ? TYPE_COLORS[proxy.type.toLowerCase()] : undefined}
                         />
                         {PROXY_PROTOCOLS.filter(
                           (protocol) => ((proxy as unknown) as Record<string, unknown>)[protocol]
@@ -304,14 +306,14 @@ const ProxyItem: React.FC<Props> = (props) => {
                           <ProxyChip
                             key={protocol}
                             label={protocol.toUpperCase()}
-                            className={protocol === 'udp' ? TYPE_COLORS.udp : undefined}
+                            className={coloredTags && protocol === 'udp' ? TYPE_COLORS.udp : undefined}
                           />
                         ))}
                       </span>
                       {shouldShowGroupSelectedProxy && (
-                        <div className="inline ml-2 text-foreground-500 flag-emoji">
-                          → {proxy.now}
-                        </div>
+                        <span className="inline text-[10px] leading-none px-1 py-0.5 rounded-md ring-1 ring-inset ring-black/10 dark:ring-white/15 text-primary bg-primary/10 align-middle ml-1">
+                          → {resolvedNow || proxy.now}
+                        </span>
                       )}
                     </>
                   )}

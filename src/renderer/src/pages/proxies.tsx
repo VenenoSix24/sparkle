@@ -189,6 +189,7 @@ const Proxies: React.FC = () => {
     proxyDisplayLayout = 'double',
     groupDisplayLayout = 'double',
     showGroupSelectedProxy = false,
+    coloredProxyTags = true,
     showProxyDetailTooltip = false,
     proxyDisplayOrder = 'default',
     autoCloseConnection = true,
@@ -573,6 +574,26 @@ const Proxies: React.FC = () => {
   proxyDisplayLayoutRef.current = proxyDisplayLayout
   const showGroupSelectedProxyRef = useRef(showGroupSelectedProxy)
   showGroupSelectedProxyRef.current = showGroupSelectedProxy
+  const coloredTagsRef = useRef(coloredProxyTags)
+  coloredTagsRef.current = coloredProxyTags
+  const groupNowMapRef = useRef<Record<string, string>>({})
+  groupNowMapRef.current = useMemo(() => {
+    const nowMap: Record<string, string> = {}
+    groups.forEach((group) => {
+      if (group.now) nowMap[group.name] = group.now
+    })
+    const finalMap: Record<string, string> = {}
+    Object.keys(nowMap).forEach((name) => {
+      let cur = name
+      let depth = 0
+      while (nowMap[cur] && depth < 8) {
+        cur = nowMap[cur]
+        depth++
+      }
+      finalMap[name] = cur
+    })
+    return finalMap
+  }, [groups])
   const showProxyDetailTooltipRef = useRef(showProxyDetailTooltip)
   showProxyDetailTooltipRef.current = showProxyDetailTooltip
   const proxyCols2Ref = useRef(proxyCols)
@@ -661,6 +682,10 @@ const Proxies: React.FC = () => {
           proxyDisplayLayout={pLayout}
           showGroupSelectedProxy={showGroupSelected}
           showProxyDetailTooltip={showTooltip}
+          coloredTags={coloredTagsRef.current}
+          resolvedNow={
+            'now' in proxy ? groupNowMapRef.current[proxy.name] : undefined
+          }
           selected={proxy.name === grps[groupIndex].now}
         />
       )

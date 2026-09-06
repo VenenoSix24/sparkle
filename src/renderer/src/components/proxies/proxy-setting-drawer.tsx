@@ -28,6 +28,7 @@ const ProxySettingDrawer: React.FC<Props> = (props) => {
     groupDisplayLayout = 'single',
     proxyDisplayLayout = 'double',
     showGroupSelectedProxy = false,
+    coloredProxyTags = true,
     showProxyDetailTooltip = false,
     autoCloseConnection = true,
     closeMode = 'all',
@@ -208,6 +209,21 @@ const ProxySettingDrawer: React.FC<Props> = (props) => {
                   isSelected={showProxyDetailTooltip}
                   onChange={(v) => {
                     patchAppConfig({ showProxyDetailTooltip: v })
+                  }}
+                >
+                  <Switch.Content>
+                    <Switch.Control>
+                      <Switch.Thumb />
+                    </Switch.Control>
+                  </Switch.Content>
+                </Switch>
+              </SettingItem>
+              <SettingItem title="彩色节点标签" {...settingItemProps} divider>
+                <Switch
+                  aria-label="彩色节点标签"
+                  isSelected={coloredProxyTags}
+                  onChange={(v) => {
+                    patchAppConfig({ coloredProxyTags: v })
                   }}
                 >
                   <Switch.Content>
