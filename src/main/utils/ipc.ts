@@ -432,16 +432,22 @@ export function registerIpcMainHandlers(): void {
   })
 }
 
-// IP 检测走主进程而非渲染进程，避免受浏览器代理环境与 CORS 影响
+// IP 检测走主进程并经 mihomo 混合端口发出，查到的才是当前节点出口 IP；
+// Node 请求不走系统代理，必须显式指定
+async function mihomoProxyOption(): Promise<{ protocol: string; host: string; port: number } | undefined> {
+  const { 'mixed-port': port = 7890 } = await getControledMihomoConfig()
+  return port != 0 ? { protocol: 'http', host: '127.0.0.1', port } : undefined
+}
+
 async function fetchIPInfo(url: string): Promise<unknown> {
-  const res = await axios.get<unknown>(url, { timeout: 10000 })
+  const res = await axios.get<unknown>(url, { timeout: 10000, proxy: await mihomoProxyOption() })
   return res.data
 }
 
 async function measureLatency(url: string): Promise<number | null> {
   try {
     const t0 = Date.now()
-    await axios.get(url, { timeout: 5000 })
+    await axios.get(url, { timeout: 5000, proxy: await mihomoProxyOption() })
     return Date.now() - t0
   } catch {
     return null
