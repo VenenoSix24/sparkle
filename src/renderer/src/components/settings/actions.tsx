@@ -211,7 +211,9 @@ const Actions: React.FC = () => {
           </Button>
         </SettingItem>
         <SettingItem compatKey="legacy" title="应用版本" divider>
-          <div>v{version}</div>
+          <div className="h-full flex items-center">
+            <div>v{version}</div>
+          </div>
         </SettingItem>
         <SettingItem
           compatKey="legacy"

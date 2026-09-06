@@ -13,10 +13,12 @@ const titleMap = {
   overrideCardStatus: '覆写',
   connectionCardStatus: '连接',
   mihomoCoreCardStatus: '内核',
+  networkCardStatus: '网络信息',
   dnsCardStatus: 'DNS',
   sniffCardStatus: '域名嗅探',
   logCardStatus: '日志',
-  substoreCardStatus: 'Sub-Store'
+  substoreCardStatus: 'Sub-Store',
+  trafficCardStatus: '用量统计'
 }
 const SiderConfig: React.FC = () => {
   const { appConfig, patchAppConfig } = useAppConfig()
@@ -30,10 +32,12 @@ const SiderConfig: React.FC = () => {
     overrideCardStatus = 'col-span-1',
     connectionCardStatus = 'col-span-2',
     mihomoCoreCardStatus = 'col-span-2',
+    networkCardStatus = 'col-span-1',
     dnsCardStatus = 'col-span-1',
     sniffCardStatus = 'col-span-1',
     logCardStatus = 'col-span-1',
-    substoreCardStatus = 'col-span-1'
+    substoreCardStatus = 'col-span-1',
+    trafficCardStatus = 'col-span-1'
   } = appConfig || {}
 
   const cardStatus = {
@@ -46,10 +50,12 @@ const SiderConfig: React.FC = () => {
     overrideCardStatus,
     connectionCardStatus,
     mihomoCoreCardStatus,
+    networkCardStatus,
     dnsCardStatus,
     sniffCardStatus,
     logCardStatus,
-    substoreCardStatus
+    substoreCardStatus,
+    trafficCardStatus
   }
 
   return (

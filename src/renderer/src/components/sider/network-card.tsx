@@ -4,6 +4,7 @@ import React from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { IoGitNetworkOutline } from 'react-icons/io5'
+import { useAppConfig } from '@renderer/hooks/use-app-config'
 
 interface Props {
   iconOnly?: boolean
@@ -11,6 +12,8 @@ interface Props {
 
 const NetworkCard: React.FC<Props> = (props) => {
   const { iconOnly } = props
+  const { appConfig } = useAppConfig()
+  const { networkCardStatus = 'col-span-1' } = appConfig || {}
   const location = useLocation()
   const navigate = useNavigate()
   const match = location.pathname.includes('/network')
@@ -27,7 +30,7 @@ const NetworkCard: React.FC<Props> = (props) => {
 
   if (iconOnly) {
     return (
-      <div className="flex justify-center">
+      <div className={`${networkCardStatus} flex justify-center`}>
         <Tooltip content="网络信息" placement="right">
           <Button
             size="sm"
@@ -53,7 +56,7 @@ const NetworkCard: React.FC<Props> = (props) => {
         transition,
         zIndex: isDragging ? 'calc(infinity)' : undefined
       }}
-      className="network-card"
+      className={`${networkCardStatus} network-card`}
     >
       <Card
         fullWidth

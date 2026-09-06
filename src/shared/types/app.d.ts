@@ -69,6 +69,7 @@ interface AppConfig {
   logCardStatus?: CardStatus
   pauseSSID?: string[]
   mihomoCoreCardStatus?: CardStatus
+  networkCardStatus?: CardStatus
   overrideCardStatus?: CardStatus
   profileCardStatus?: CardStatus
   proxyCardStatus?: CardStatus
@@ -77,6 +78,7 @@ interface AppConfig {
   sniffCardStatus?: CardStatus
   substoreCardStatus?: CardStatus
   sysproxyCardStatus?: CardStatus
+  trafficCardStatus?: CardStatus
   tunCardStatus?: CardStatus
   githubToken?: string
   gistSyncEnabled?: boolean
