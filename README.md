@@ -3,20 +3,24 @@
 <h3 align="center">Another <a href="https://github.com/MetaCubeX/mihomo">Mihomo</a> GUI</h3>
 
 <p align="center">
-  <a href="https://github.com/xishang0128/sparkle/releases/latest"><img src="https://img.shields.io/github/v/release/xishang0128/sparkle?label=latest"></a>
-  <a href="https://github.com/xishang0128/sparkle/releases/tag/rolling"><img src="https://img.shields.io/badge/-rolling-orange"></a>
-  <a href="https://t.me/+y7rcYjEKIiI1NzZl"><img src="https://img.shields.io/badge/Telegram-Group-blue?logo=telegram"></a>
+  <a href="https://github.com/VenenoSix24/sparkle/releases/latest"><img src="https://img.shields.io/github/v/release/VenenoSix24/sparkle?label=latest"></a>
+  <a href="https://github.com/VenenoSix24/sparkle/releases/tag/rolling"><img src="https://img.shields.io/badge/-rolling-orange"></a>
 </p>
+
+> [!IMPORTANT]
+> **这是 Sparkle 的自用修改版**，仅自用，与上游项目无关，请勿将本仓库的问题提到上游。
+>
+> 基于上游项目 [xishang0128/sparkle](https://github.com/xishang0128/sparkle)，非常感谢大佬，我在上游基础上进行了自定义。
 
 ## 特性
 
-- [x] 开箱即用，无需服务模式的 Tun
-- [x] 多种配色主题可选，UI 焕然一新
-- [x] 支持大部分 Mihomo 常用配置修改
-- [x] 内置稳定版和预览版 Mihomo 内核
-- [x] 通过 WebDAV 一键备份和恢复配置
-- [x] 强大的覆写功能，任意修订配置文件
-- [x] 深度集成 Sub-Store，轻松管理订阅
+- [X] 开箱即用，无需服务模式的 Tun
+- [X] 多种配色主题可选，UI 焕然一新
+- [X] 支持大部分 Mihomo 常用配置修改
+- [X] 内置稳定版和预览版 Mihomo 内核
+- [X] 通过 WebDAV 一键备份和恢复配置
+- [X] 强大的覆写功能，任意修订配置文件
+- [X] 深度集成 Sub-Store，轻松管理订阅
 
 ## 开发
 
