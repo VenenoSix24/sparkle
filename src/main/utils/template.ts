@@ -44,6 +44,7 @@ export const defaultConfig: AppConfig = {
     'sniff',
     'proxy',
     'connection',
+    'network',
     'profile',
     'mihomo',
     'rule',
