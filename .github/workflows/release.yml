@@ -173,60 +173,100 @@ jobs:
           API_URL: ${{ secrets.API_URL }}
           API_KEY: ${{ secrets.API_KEY }}
           RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          PREVIOUS_TAG=$(
-            git tag --merged HEAD |
-              awk -v current="$RELEASE_VERSION" '
-                {
-                  normalized = $0
-                  sub(/^v/, "", normalized)
-                  if (normalized ~ /^[0-9]+\.[0-9]+\.[0-9]+$/ && normalized != current) {
-                    print normalized "\t" $0
-                  }
-                }
-              ' |
-              sort -t $'\t' -k1,1V |
-              tail -n 1 |
-              cut -f 2-
-          )
+          # 自用修改版：日志 = 上游同名版本官方日志（若有）+ fork 独有提交（若有）
+          git remote add upstream https://github.com/xishang0128/sparkle.git
+          git fetch upstream master --no-tags 2>/dev/null || true
+          git fetch upstream tag "$RELEASE_VERSION" --no-tags 2>/dev/null || true
+          UPSTREAM_SHA=$(git rev-parse -q --verify "refs/tags/$RELEASE_VERSION" || true)
 
-          if [[ -n "$PREVIOUS_TAG" ]]; then
-            TEXT=$(git log "$PREVIOUS_TAG..HEAD" --pretty=format:%s | grep -Ev '^update version to [0-9]+\.[0-9]+\.[0-9]+$' || true)
+          # fork 独有提交 = 不在上游同名版本、也不在上游 master 里的提交
+          if [[ -n "$UPSTREAM_SHA" ]]; then
+            FORK_COMMITS=$(
+              while IFS= read -r sha; do
+                if git merge-base --is-ancestor "$sha" refs/remotes/upstream/master 2>/dev/null; then
+                  continue
+                fi
+                git log -1 --pretty=%s "$sha"
+              done < <(git log --no-merges "$UPSTREAM_SHA..HEAD" --pretty=format:%H) |
+                grep -Ev '^update version to [0-9]+\.[0-9]+\.[0-9]+$' || true
+            )
           else
-            TEXT=$(git log HEAD --pretty=format:%s | grep -Ev '^update version to [0-9]+\.[0-9]+\.[0-9]+$' || true)
-          fi
-          if [[ -z "$TEXT" ]]; then
-            TEXT=$(git log -1 --pretty=format:%s)
+            PREVIOUS_TAG=$(
+              git tag --merged HEAD |
+                awk -v current="$RELEASE_VERSION" '
+                  {
+                    normalized = $0
+                    sub(/^v/, "", normalized)
+                    if (normalized ~ /^[0-9]+\.[0-9]+\.[0-9]+$/ && normalized != current) {
+                      print normalized "\t" $0
+                    }
+                  }
+                ' |
+                sort -t $'\t' -k1,1V |
+                tail -n 1 |
+                cut -f 2-
+            )
+            if [[ -n "$PREVIOUS_TAG" ]]; then
+              FORK_COMMITS=$(git log --no-merges "$PREVIOUS_TAG..HEAD" --pretty=format:%s | grep -Ev '^update version to [0-9]+\.[0-9]+\.[0-9]+$' || true)
+            else
+              FORK_COMMITS=$(git log --no-merges HEAD --pretty=format:%s | grep -Ev '^update version to [0-9]+\.[0-9]+\.[0-9]+$' || true)
+            fi
           fi
 
-          QUESTION=$(printf 'Translate into Chinese:\n"""\n%s\n"""' "$TEXT")
-          PAYLOAD=$(jq -n --arg question "$QUESTION" '{
-            stream: false,
-            model: "gpt-5-mini",
-            messages: [
-              {
-                role: "system",
-                content: "You are a professional translation engine, please translate the text into a colloquial, professional, elegant and fluent content, without the style of machine translation. You must only translate the text content, never interpret it."
-              },
-              {
-                role: "user",
-                content: $question
-              }
-            ]
-          }')
-          RESPONSE=$(curl -sS -X POST "$API_URL/v1/chat/completions" \
-            -H "Authorization: Bearer $API_KEY" \
-            -H "Content-Type: application/json" \
-            -d "$PAYLOAD" \
-            --max-time 30 || true)
-          TRANSLATED_TEXT=$(printf '%s' "$RESPONSE" | jq -r '.choices[0].message.content // empty' 2>/dev/null || true)
-          if [[ -z "$TRANSLATED_TEXT" ]]; then
-            TRANSLATED_TEXT="$TEXT"
+          # 上游 release 正文（截掉指向上游的下载地址一节）
+          UPSTREAM_BODY=""
+          if [[ -n "$UPSTREAM_SHA" ]]; then
+            UPSTREAM_BODY=$(gh api "repos/xishang0128/sparkle/releases/tags/$RELEASE_VERSION" --jq '.body' 2>/dev/null | sed '/### 下载地址/,$d' || true)
           fi
 
           echo '# 更新日志' > changelog.md
-          printf '%s\n' "$TRANSLATED_TEXT" | sed 's/^/ - /' >> changelog.md
+
+          if [[ -n "$FORK_COMMITS" ]]; then
+            QUESTION=$(printf 'Translate into Chinese:\n"""\n%s\n"""' "$FORK_COMMITS")
+            PAYLOAD=$(jq -n --arg question "$QUESTION" '{
+              stream: false,
+              model: "gpt-5-mini",
+              messages: [
+                {
+                  role: "system",
+                  content: "You are a professional translation engine, please translate the text into a colloquial, professional, elegant and fluent content, without the style of machine translation. You must only translate the text content, never interpret it."
+                },
+                {
+                  role: "user",
+                  content: $question
+                }
+              ]
+            }')
+            RESPONSE=$(curl -sS -X POST "$API_URL/v1/chat/completions" \
+              -H "Authorization: Bearer $API_KEY" \
+              -H "Content-Type: application/json" \
+              -d "$PAYLOAD" \
+              --max-time 30 || true)
+            TRANSLATED_TEXT=$(printf '%s' "$RESPONSE" | jq -r '.choices[0].message.content // empty' 2>/dev/null || true)
+            if [[ -z "$TRANSLATED_TEXT" ]]; then
+              TRANSLATED_TEXT="$FORK_COMMITS"
+            fi
+            echo '## 自用修改版新增（相对上游）' >> changelog.md
+            printf '%s\n' "$TRANSLATED_TEXT" | sed 's/^/ - /' >> changelog.md
+          fi
+
+          if [[ -n "$UPSTREAM_BODY" ]]; then
+            {
+              echo ''
+              echo "## 上游 $RELEASE_VERSION 更新内容"
+              echo ''
+              printf '%s\n' "$UPSTREAM_BODY"
+            } >> changelog.md
+          fi
+
+          # 两者皆为空时兜底
+          if ! grep -q '^## ' changelog.md; then
+            LAST_COMMIT=$(git log -1 --pretty=format:%s)
+            echo ' - '"$LAST_COMMIT" >> changelog.md
+          fi
 
       - name: Set Release Version
         env:
