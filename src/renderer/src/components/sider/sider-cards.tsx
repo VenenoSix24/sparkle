@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { closestCorners, DndContext, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext } from '@dnd-kit/sortable'
 import { useNavigate } from 'react-router-dom'
@@ -9,6 +9,7 @@ import ConnCard from './conn-card'
 import DNSCard from './dns-card'
 import LogCard from './log-card'
 import MihomoCoreCard from './mihomo-core-card'
+import NetworkCard from './network-card'
 import OverrideCard from './override-card'
 import ProfileCard from './profile-card'
 import ProxyCard from './proxy-card'
@@ -28,6 +29,7 @@ const defaultSiderOrder = [
   'sniff',
   'proxy',
   'connection',
+  'network',
   'profile',
   'mihomo',
   'rule',
@@ -44,6 +46,7 @@ const siderCardRouteMap = {
   'proxy-card': '/proxies',
   'mihomo-core-card': '/mihomo',
   'conn-card': '/connections',
+  'network-card': '/network',
   'dns-card': '/dns',
   'sniff-card': '/sniffer',
   'log-card': '/logs',
@@ -64,6 +67,7 @@ const componentMap = {
   proxy: ProxyCard,
   mihomo: MihomoCoreCard,
   connection: ConnCard,
+  network: NetworkCard,
   dns: DNSCard,
   sniff: SniffCard,
   log: LogCard,
@@ -79,7 +83,13 @@ interface Props {
 
 export default function SiderCards({ iconOnly = false }: Props): React.JSX.Element {
   const { appConfig, patchAppConfig } = useAppConfig()
-  const siderOrder = appConfig?.siderOrder ?? defaultSiderOrder
+  // 旧配置的 siderOrder 不含新增卡片，缺失项按默认顺序补到末尾
+  const siderOrder = useMemo(() => {
+    const saved = appConfig?.siderOrder
+    if (!saved) return defaultSiderOrder
+    const missing = defaultSiderOrder.filter((key) => !saved.includes(key))
+    return [...saved.filter((key) => key in componentMap), ...missing]
+  }, [appConfig?.siderOrder])
   const [order, setOrder] = useState(siderOrder)
   const suppressClickRef = useRef(false)
   const suppressClickTimerRef = useRef<number | undefined>(undefined)

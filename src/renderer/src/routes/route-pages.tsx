@@ -16,6 +16,7 @@ const ResourcesPage = createPreloadablePage(() => import('@renderer/pages/resour
 const DNSPage = createPreloadablePage(() => import('@renderer/pages/dns'))
 const SnifferPage = createPreloadablePage(() => import('@renderer/pages/sniffer'))
 const SubStorePage = createPreloadablePage(() => import('@renderer/pages/substore'))
+const NetworkPage = createPreloadablePage(() => import('@renderer/pages/network'))
 
 export const Override = OverridePage.Page
 export const Proxies = ProxiesPage.Page
@@ -31,6 +32,7 @@ export const Resources = ResourcesPage.Page
 export const DNS = DNSPage.Page
 export const Sniffer = SnifferPage.Page
 export const SubStore = SubStorePage.Page
+export const Network = NetworkPage.Page
 
 void ProxiesPage.preload().catch(() => {})
 
@@ -47,7 +49,8 @@ const remainingPageLoaders: Array<() => Promise<unknown>> = [
   ResourcesPage.preload,
   OverridePage.preload,
   LogsPage.preload,
-  SubStorePage.preload
+  SubStorePage.preload,
+  NetworkPage.preload
 ]
 const routePreloadStartDelay = 1000
 const routePreloadInterval = 250
