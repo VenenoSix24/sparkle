@@ -15,6 +15,7 @@ import { initProfileUpdater } from './core/profileUpdater'
 import { startMonitor } from './resolve/trafficMonitor'
 import { showFloatingWindow } from './resolve/floatingWindow'
 import { getAppConfigSync } from './config/app'
+import { setTrafficUsageEnabled } from './traffic/recorder'
 import { createMainWindowStateManager } from './resolve/windowState'
 import { isHttpUrl } from './utils/url'
 import {
@@ -180,6 +181,7 @@ app.whenReady().then(async () => {
     app.quit()
     return
   }
+  setTrafficUsageEnabled(appConfig.enableTrafficLogger !== false)
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.

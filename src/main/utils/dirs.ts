@@ -136,6 +136,10 @@ export function serviceAuthStorePath(): string {
   return path.join(dataDir(), 'service-auth.json')
 }
 
+export function trafficUsageDatabasePath(): string {
+  return path.join(dataDir(), 'traffic-usage.db')
+}
+
 export function appConfigPath(): string {
   return path.join(dataDir(), 'config.yaml')
 }

@@ -152,6 +152,7 @@ interface AppConfig {
   displayAppName?: boolean
   disableGPU: boolean
   disableAnimation?: boolean
+  enableTrafficLogger?: boolean
   networkIPProvider?: NetworkIPProvider
   networkLatencyTargets?: INetworkLatencyTarget[]
   networkInfoCardOrder?: NetworkInfoCardKey[]

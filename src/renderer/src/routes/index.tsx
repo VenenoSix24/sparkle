@@ -16,6 +16,7 @@ import {
   Sniffer,
   SubStore,
   Sysproxy,
+  Traffic,
   Tun
 } from './route-pages'
 
@@ -76,6 +77,10 @@ const routes = [
   {
     path: '/network',
     element: startupRoute(<Network />)
+  },
+  {
+    path: '/traffic',
+    element: startupRoute(<Traffic />)
   },
   {
     path: '/override',

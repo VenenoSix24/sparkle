@@ -10,6 +10,7 @@ import DNSCard from './dns-card'
 import LogCard from './log-card'
 import MihomoCoreCard from './mihomo-core-card'
 import NetworkCard from './network-card'
+import TrafficCard from './traffic-card'
 import OverrideCard from './override-card'
 import ProfileCard from './profile-card'
 import ProxyCard from './proxy-card'
@@ -30,6 +31,7 @@ const defaultSiderOrder = [
   'proxy',
   'connection',
   'network',
+  'traffic',
   'profile',
   'mihomo',
   'rule',
@@ -47,6 +49,7 @@ const siderCardRouteMap = {
   'mihomo-core-card': '/mihomo',
   'conn-card': '/connections',
   'network-card': '/network',
+  'traffic-card': '/traffic',
   'dns-card': '/dns',
   'sniff-card': '/sniffer',
   'log-card': '/logs',
@@ -68,6 +71,7 @@ const componentMap = {
   mihomo: MihomoCoreCard,
   connection: ConnCard,
   network: NetworkCard,
+  traffic: TrafficCard,
   dns: DNSCard,
   sniff: SniffCard,
   log: LogCard,
@@ -83,7 +87,7 @@ interface Props {
 
 export default function SiderCards({ iconOnly = false }: Props): React.JSX.Element {
   const { appConfig, patchAppConfig } = useAppConfig()
-  // 旧配置的 siderOrder 不含新增卡片，缺失项按默认顺序补到末尾
+  // 旧配置缺新卡片 key，按默认顺序补到末尾
   const siderOrder = useMemo(() => {
     const saved = appConfig?.siderOrder
     if (!saved) return defaultSiderOrder

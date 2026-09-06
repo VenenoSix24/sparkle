@@ -1,4 +1,10 @@
 import { TitleBarOverlayOptions } from 'electron'
+import type {
+  TrafficUsageAggregate,
+  TrafficUsageBreakdownQuery,
+  TrafficUsageDimension,
+  TrafficUsageOverview
+} from '../../../shared/trafficUsage'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function ipcErrorWrapper(response: any): any {
@@ -403,6 +409,33 @@ export async function setupFirewall(): Promise<void> {
 
 export async function getInterfaces(): Promise<Record<string, NetworkInterfaceInfo[]>> {
   return ipcErrorWrapper(await window.electron.ipcRenderer.invoke('getInterfaces'))
+}
+
+export async function queryTrafficUsageOverview(
+  type: TrafficUsageDimension,
+  startTime: number,
+  endTime: number,
+  bucketSizeMs: number
+): Promise<TrafficUsageOverview> {
+  return ipcErrorWrapper(
+    await window.electron.ipcRenderer.invoke(
+      'queryTrafficUsageOverview',
+      type,
+      startTime,
+      endTime,
+      bucketSizeMs
+    )
+  )
+}
+
+export async function queryTrafficUsageBreakdown(
+  query: TrafficUsageBreakdownQuery
+): Promise<TrafficUsageAggregate[]> {
+  return ipcErrorWrapper(await window.electron.ipcRenderer.invoke('queryTrafficUsageBreakdown', query))
+}
+
+export async function clearTrafficUsage(): Promise<void> {
+  return ipcErrorWrapper(await window.electron.ipcRenderer.invoke('clearTrafficUsage'))
 }
 
 export async function fetchIPInfo(url: string): Promise<unknown> {

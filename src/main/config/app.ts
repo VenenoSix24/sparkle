@@ -5,6 +5,7 @@ import { deepMerge } from '../utils/merge'
 import { defaultConfig } from '../utils/template'
 import { readFileSync, existsSync } from 'fs'
 import { systemCoreDefaultPath, systemCoreOnlyBuild } from '../../shared/build-flags'
+import { setTrafficUsageEnabled } from '../traffic/recorder'
 
 let appConfig: AppConfig
 let writePromise: Promise<void> = Promise.resolve()
@@ -82,6 +83,9 @@ export async function patchAppConfig(patch: Partial<AppConfig>): Promise<AppConf
   })()
   writePromise = currentPromise.catch(() => {})
   await currentPromise
+  if ('enableTrafficLogger' in patch) {
+    setTrafficUsageEnabled(appConfig.enableTrafficLogger !== false)
+  }
   return appConfig
 }
 
