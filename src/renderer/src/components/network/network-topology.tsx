@@ -13,8 +13,6 @@ import {
 import { MdTag } from 'react-icons/md'
 import { calcTraffic } from '@renderer/utils/calc'
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
 type NodeType = 'root' | 'client' | 'port' | 'rule' | 'group' | 'proxy'
 
 interface TopologyNodeData {
@@ -27,8 +25,6 @@ interface TopologyNodeData {
   _children?: TopologyNodeData[]
   collapsed?: boolean
 }
-
-// ─── Color helpers ────────────────────────────────────────────────────────────
 
 function getNodeColors() {
   return {
@@ -59,8 +55,6 @@ function getNodeColors() {
     baseContent: 'hsl(var(--heroui-foreground))'
   }
 }
-
-// ─── Hierarchy builder ────────────────────────────────────────────────────────
 
 function buildHierarchy(
   connections: ControllerConnectionDetail[],
@@ -173,7 +167,6 @@ function buildHierarchy(
     portNode.traffic += traffic
   }
 
-  // Convert to tree with collapse state
   const rootChildren: TopologyNodeData[] = []
 
   function applyCollapse(node: TopologyNodeData, defaultCollapsed = false): TopologyNodeData {
@@ -232,8 +225,6 @@ function buildHierarchy(
   }
 }
 
-// ─── Text measurement ─────────────────────────────────────────────────────────
-
 let measureCanvas: HTMLCanvasElement | null = null
 function getTextWidth(text: string, font = '600 11px sans-serif'): number {
   if (!measureCanvas) measureCanvas = document.createElement('canvas')
@@ -242,8 +233,6 @@ function getTextWidth(text: string, font = '600 11px sans-serif'): number {
   ctx.font = font
   return ctx.measureText(text).width
 }
-
-// ─── Main component ───────────────────────────────────────────────────────────
 
 const NetworkTopologyCard: React.FC = () => {
   const { resolvedTheme } = useTheme()
@@ -256,7 +245,6 @@ const NetworkTopologyCard: React.FC = () => {
   const frozenRef = useRef<ControllerConnectionDetail[] | null>(null)
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set())
 
-  // IPC listener
   useEffect(() => {
     if (isPaused) return
     const handler = (_e: unknown, info: ControllerConnections): void => {
@@ -270,7 +258,6 @@ const NetworkTopologyCard: React.FC = () => {
 
   const currentConnections = isPaused && frozenRef.current ? frozenRef.current : connections
 
-  // Stats
   const stats = useMemo(() => {
     const clients = new Set<string>()
     const rules = new Set<string>()
@@ -292,13 +279,11 @@ const NetworkTopologyCard: React.FC = () => {
     }
   }, [currentConnections])
 
-  // Hierarchy data
   const hierarchyData = useMemo(
     () => buildHierarchy(currentConnections, collapsedNodes),
     [currentConnections, collapsedNodes]
   )
 
-  // Toggle collapse
   const toggleCollapseRef = useRef<(nodeId: string, isCollapsed: boolean) => void>(() => {})
   toggleCollapseRef.current = useCallback((nodeId: string, isCurrentlyCollapsed: boolean) => {
     const expandedKey = `expanded-${nodeId}`
@@ -321,7 +306,6 @@ const NetworkTopologyCard: React.FC = () => {
     })
   }, [])
 
-  // D3 render
   useEffect(() => {
     const svgEl = svgRef.current
     const containerEl = containerRef.current
@@ -349,7 +333,6 @@ const NetworkTopologyCard: React.FC = () => {
 
     treeLayout(root)
 
-    // Calculate node widths
     const nodeWidths = new Map<string, number>()
     for (const d of root.descendants()) {
       if (d.data.type !== 'root') {
@@ -363,7 +346,6 @@ const NetworkTopologyCard: React.FC = () => {
 
     const getNodeWidth = (d: d3.HierarchyNode<TopologyNodeData>) => nodeWidths.get(d.data.id) ?? 80
 
-    // Max width per depth
     const maxWidthPerLevel = new Map<number, number>()
     root.descendants().forEach((d) => {
       if (d.data.type !== 'root') {
@@ -372,7 +354,6 @@ const NetworkTopologyCard: React.FC = () => {
       }
     })
 
-    // Cumulative x offsets
     const levelXOffset = new Map<number, number>()
     let cumX = 0
     for (let depth = 1; depth <= maxWidthPerLevel.size; depth++) {
@@ -392,7 +373,6 @@ const NetworkTopologyCard: React.FC = () => {
       }
     })
 
-    // Bounds
     let minX = Infinity
     let maxX = -Infinity
     root.each((d) => {
@@ -401,7 +381,7 @@ const NetworkTopologyCard: React.FC = () => {
     })
 
     const treeHeight = maxX - minX + nodeSpacingY
-    // 高度随内容收缩，行数少时不留大片空白；只保留单行的最小空间
+    // 高度随内容收缩，避免行数少时留白
     const actualHeight = Math.max(nodeHeight + topPadding + 40, treeHeight + topPadding + 40)
 
     let maxY = 0
@@ -421,7 +401,6 @@ const NetworkTopologyCard: React.FC = () => {
 
     const colors = getNodeColors()
 
-    // Links
     const visibleLinks = root.links().filter((l) => l.source.data.type !== 'root')
     g.selectAll('.link')
       .data(visibleLinks)
@@ -442,7 +421,6 @@ const NetworkTopologyCard: React.FC = () => {
       .attr('stroke-opacity', 0.3)
       .attr('stroke-width', (d) => Math.max(1, Math.min(4, d.target.data.connections / 5)))
 
-    // Nodes
     const nodes = g
       .selectAll('.node')
       .data(root.descendants().filter((d) => d.data.type !== 'root'))
@@ -464,7 +442,6 @@ const NetworkTopologyCard: React.FC = () => {
         }
       })
 
-    // Connection count badge
     nodes
       .append('text')
       .attr('dy', -nodeHeight / 2 - 4)
@@ -474,7 +451,6 @@ const NetworkTopologyCard: React.FC = () => {
       .attr('font-weight', '500')
       .text((d) => `${d.data.connections}`)
 
-    // Node rect
     nodes
       .append('rect')
       .attr('x', (d) => -getNodeWidth(d) / 2)
@@ -486,7 +462,6 @@ const NetworkTopologyCard: React.FC = () => {
       .style('stroke', (d) => colors[d.data.type].fill)
       .attr('stroke-width', 2)
 
-    // Collapse indicator
     nodes
       .filter((d) =>
         Boolean(
@@ -503,7 +478,6 @@ const NetworkTopologyCard: React.FC = () => {
       .attr('font-weight', '700')
       .text((d) => (d.data.collapsed ? '+' : '−'))
 
-    // Label
     nodes
       .append('text')
       .attr('dy', '0.31em')
@@ -513,7 +487,6 @@ const NetworkTopologyCard: React.FC = () => {
       .attr('font-weight', '600')
       .text((d) => d.data.name)
 
-    // Tooltip
     nodes
       .append('title')
       .text((d) => `${d.data.name}\n${d.data.connections} 个连接\n${calcTraffic(d.data.traffic)}`)
@@ -530,7 +503,6 @@ const NetworkTopologyCard: React.FC = () => {
 
   return (
     <div className="rounded-xl border border-foreground/10 bg-content1 p-4 shadow-sm">
-      {/* Header */}
       <div className="mb-3.5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-success/15 text-success">
@@ -539,7 +511,6 @@ const NetworkTopologyCard: React.FC = () => {
           <h3 className="text-[15px] font-semibold">网络拓扑</h3>
         </div>
         <div className="flex items-center gap-2">
-          {/* Stats */}
           <div className="hidden flex-wrap gap-x-2 text-[12px] text-foreground/50 sm:flex">
             <span>{stats.clientCount} 设备</span>
             <span>·</span>
@@ -564,7 +535,6 @@ const NetworkTopologyCard: React.FC = () => {
         </div>
       </div>
 
-      {/* Legend */}
       <div className="mb-3 flex flex-wrap gap-3 text-[12px] text-foreground/60">
         <span className="flex items-center gap-1">
           <IoGitNetworkOutline className="text-success" size={13} />
@@ -588,7 +558,6 @@ const NetworkTopologyCard: React.FC = () => {
         </span>
       </div>
 
-      {/* Empty state */}
       {currentConnections.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-10 text-foreground/40">
           <IoGitNetworkOutline size={32} className="mb-2 animate-pulse" />

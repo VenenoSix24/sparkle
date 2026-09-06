@@ -24,6 +24,7 @@ import {
 import { IoMdGlobe, IoMdPulse } from 'react-icons/io'
 import { fetchIPInfo, measureLatency } from '@renderer/utils/ipc'
 import { useAppConfig } from '@renderer/hooks/use-app-config'
+import { useControledMihomoConfig } from '@renderer/hooks/use-controled-mihomo-config'
 
 const DEFAULT_NETWORK_INFO_CARD_ORDER: NetworkInfoCardKey[] = ['ip', 'topology', 'latency']
 
@@ -242,6 +243,9 @@ function latencyBarColor(latency: number | null): string {
 
 const NetworkPage: React.FC = () => {
   const { appConfig, patchAppConfig } = useAppConfig()
+  const { controledMihomoConfig } = useControledMihomoConfig()
+  const sysproxyEnabled = appConfig?.sysProxy?.enable ?? false
+  const tunEnabled = controledMihomoConfig?.tun?.enable ?? false
   const [provider, setProvider] = useState<IPProvider>(appConfig?.networkIPProvider ?? 'ip.sb')
   const fetchIdRef = useRef(0)
   const [ipInfo, setIpInfo] = useState<IPInfo | null>(null)
@@ -393,10 +397,11 @@ const NetworkPage: React.FC = () => {
     setTestingLatency(false)
   }, [latencyTargets])
 
+  // 开关切换改变请求出口，自动重测
   useEffect(() => {
     if (!appConfigLoaded) return
     testAllLatencies()
-  }, [appConfigLoaded])
+  }, [appConfigLoaded, testAllLatencies, sysproxyEnabled, tunEnabled])
 
   const averageLatency = (() => {
     const successes = latencyTargets
@@ -432,9 +437,10 @@ const NetworkPage: React.FC = () => {
     [provider]
   )
 
+  // 跟随开关刷新出口 IP
   useEffect(() => {
     fetchIP()
-  }, [])
+  }, [sysproxyEnabled, tunEnabled])
 
   const handleCopy = useCallback(() => {
     if (!ipInfo?.ip) return
