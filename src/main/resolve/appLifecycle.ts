@@ -3,6 +3,7 @@ import { stopCore } from '../core/manager'
 import { stopNetworkDetection } from '../core/network'
 import { disableSysProxySync, triggerSysProxy } from '../sys/sysproxy'
 import { appendAppLog } from '../utils/log'
+import { closeTrafficUsage } from '../traffic/recorder'
 
 interface AppQuitLifecycleContext {
   getMainWindow: () => BrowserWindow | null
@@ -70,6 +71,13 @@ async function cleanupBeforeExit(useRegistry: boolean): Promise<void> {
   }
 
   await Promise.all([
+    (async (): Promise<void> => {
+      try {
+        await closeTrafficUsage()
+      } catch (error) {
+        await appendAppLog(`[App]: close traffic usage before exit failed, ${error}\n`)
+      }
+    })(),
     (async (): Promise<void> => {
       try {
         await triggerSysProxy(false, false, useRegistry)

@@ -8,6 +8,7 @@ import { getRuntimeConfig } from './factory'
 import { floatingWindow } from '../resolve/floatingWindow'
 import { mihomoIpcPath, serviceIpcPath } from '../utils/dirs'
 import { publishMihomoLog } from '../utils/log'
+import { recordTrafficUsage } from '../traffic/recorder'
 import { createSignedServiceAxios, getServiceAuthHeaders } from '../service/api'
 
 let axiosIns: AxiosInstance = null!
@@ -540,7 +541,9 @@ const mihomoConnections = async (): Promise<void> => {
     const data = e.data as string
     connectionsRetry = 10
     try {
-      mainWindow?.webContents.send('mihomoConnections', JSON.parse(data) as ControllerConnections)
+      const info = JSON.parse(data) as ControllerConnections
+      recordTrafficUsage(info)
+      mainWindow?.webContents.send('mihomoConnections', info)
     } catch {
       // ignore
     }
