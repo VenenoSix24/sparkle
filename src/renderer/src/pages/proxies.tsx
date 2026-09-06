@@ -9,7 +9,6 @@ import {
   mihomoGroupDelay,
   mihomoProxyDelay
 } from '@renderer/utils/ipc'
-import { FaLocationCrosshairs } from 'react-icons/fa6'
 import {
   memo,
   useCallback,
@@ -23,8 +22,8 @@ import {
 import { GroupedVirtuoso, GroupedVirtuosoHandle } from 'react-virtuoso'
 import ProxyItem from '@renderer/components/proxies/proxy-item'
 import ProxySettingDrawer from '@renderer/components/proxies/proxy-setting-drawer'
+import { MdDoubleArrow, MdOutlineMyLocation, MdOutlineSpeed, MdTune } from 'react-icons/md'
 import { IoIosArrowBack } from 'react-icons/io'
-import { MdDoubleArrow, MdOutlineSpeed, MdTune } from 'react-icons/md'
 import { useGroups } from '@renderer/hooks/use-groups'
 import CollapseInput from '@renderer/components/base/collapse-input'
 import { includesIgnoreCase } from '@renderer/utils/includes'
@@ -144,7 +143,7 @@ const GroupHeader = memo(function GroupHeader({
                   onValueChange={(v) => onUpdateSearch(index, v)}
                 />
                 <Button variant="light" size="sm" isIconOnly onPress={() => onScrollToProxy(index)}>
-                  <FaLocationCrosshairs className="text-lg text-foreground-500" />
+                  <MdOutlineMyLocation className="text-lg text-foreground-500" />
                 </Button>
                 <Button
                   variant="light"
@@ -190,6 +189,7 @@ const Proxies: React.FC = () => {
     proxyDisplayLayout = 'double',
     groupDisplayLayout = 'double',
     showGroupSelectedProxy = false,
+    coloredProxyTags = true,
     showProxyDetailTooltip = false,
     proxyDisplayOrder = 'default',
     autoCloseConnection = true,
@@ -198,7 +198,7 @@ const Proxies: React.FC = () => {
     delayTestUrlScope = 'group',
     delayTestUseGroupApi = false,
     delayTestConcurrency,
-    rememberProxyGroupOpenState = false
+    rememberProxyGroupOpenState = true
   } = appConfig || {}
   const [cols, setCols] = useState(1)
   const [isOpen, setIsOpen] = useState<boolean[]>(() => {
@@ -574,6 +574,26 @@ const Proxies: React.FC = () => {
   proxyDisplayLayoutRef.current = proxyDisplayLayout
   const showGroupSelectedProxyRef = useRef(showGroupSelectedProxy)
   showGroupSelectedProxyRef.current = showGroupSelectedProxy
+  const coloredTagsRef = useRef(coloredProxyTags)
+  coloredTagsRef.current = coloredProxyTags
+  const groupNowMapRef = useRef<Record<string, string>>({})
+  groupNowMapRef.current = useMemo(() => {
+    const nowMap: Record<string, string> = {}
+    groups.forEach((group) => {
+      if (group.now) nowMap[group.name] = group.now
+    })
+    const finalMap: Record<string, string> = {}
+    Object.keys(nowMap).forEach((name) => {
+      let cur = name
+      let depth = 0
+      while (nowMap[cur] && depth < 8) {
+        cur = nowMap[cur]
+        depth++
+      }
+      finalMap[name] = cur
+    })
+    return finalMap
+  }, [groups])
   const showProxyDetailTooltipRef = useRef(showProxyDetailTooltip)
   showProxyDetailTooltipRef.current = showProxyDetailTooltip
   const proxyCols2Ref = useRef(proxyCols)
@@ -662,6 +682,10 @@ const Proxies: React.FC = () => {
           proxyDisplayLayout={pLayout}
           showGroupSelectedProxy={showGroupSelected}
           showProxyDetailTooltip={showTooltip}
+          coloredTags={coloredTagsRef.current}
+          resolvedNow={
+            'now' in proxy ? groupNowMapRef.current[proxy.name] : undefined
+          }
           selected={proxy.name === grps[groupIndex].now}
         />
       )

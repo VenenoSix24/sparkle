@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Input, InputProps } from '@heroui/react'
-import { FaSearch } from 'react-icons/fa'
+import { MdOutlineSearch } from 'react-icons/md'
 
 type CollapseInputProps = InputProps
 
@@ -58,7 +58,7 @@ const CollapseInput: React.FC<CollapseInputProps> = (props) => {
               }
             }}
           >
-            <FaSearch />
+            <MdOutlineSearch />
           </div>
         }
         onClick={(e) => {
