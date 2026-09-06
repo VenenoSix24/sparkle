@@ -171,13 +171,39 @@ export async function createApplicationMenu(): Promise<void> {
         {
           label: '了解更多',
           click: () => {
-            shell.openExternal('https://github.com/xishang0128/sparkle')
+            dialog.showMessageBox(mainWindow!, {
+              type: 'info',
+              title: '了解更多',
+              message: '即将前往修改版仓库',
+              detail:
+                'https://github.com/VenenoSix24/sparkle\n\n本仓库为 Sparkle 的自用修改版，与上游项目无关。',
+              buttons: ['取消', '前往'],
+              defaultId: 1,
+              cancelId: 0
+            }).then(({ response }) => {
+              if (response === 1) {
+                shell.openExternal('https://github.com/VenenoSix24/sparkle')
+              }
+            })
           }
         },
         {
           label: '报告问题',
           click: () => {
-            shell.openExternal('https://github.com/xishang0128/sparkle/issues')
+            dialog.showMessageBox(mainWindow!, {
+              type: 'info',
+              title: '报告问题',
+              message: '即将前往修改版仓库的 Issues 页面',
+              detail:
+                'https://github.com/VenenoSix24/sparkle/issues\n\n本仓库为 Sparkle 的自用修改版，请勿向上游反馈本版本的问题。',
+              buttons: ['取消', '前往'],
+              defaultId: 1,
+              cancelId: 0
+            }).then(({ response }) => {
+              if (response === 1) {
+                shell.openExternal('https://github.com/VenenoSix24/sparkle/issues')
+              }
+            })
           }
         },
         { type: 'separator' },

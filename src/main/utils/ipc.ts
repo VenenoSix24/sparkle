@@ -1,4 +1,4 @@
-import { app, ipcMain } from 'electron'
+import { app, ipcMain, shell } from 'electron'
 import {
   mihomoChangeProxy,
   mihomoCloseConnections,
@@ -404,6 +404,12 @@ export function registerIpcMainHandlers(): void {
   ipcMain.handle('closeFloatingWindow', () => ipcErrorWrapper(closeFloatingWindow)())
   ipcMain.handle('showContextMenu', () => ipcErrorWrapper(showContextMenu)())
   ipcMain.handle('openFile', (_e, type, id, ext) => openFile(type, id, ext))
+  ipcMain.handle('openExternal', (_e, url: string) => {
+    if (typeof url === 'string' && url.startsWith('https://')) {
+      return shell.openExternal(url)
+    }
+    return undefined
+  })
   ipcMain.handle('openDevTools', () => {
     mainWindow?.webContents.openDevTools()
   })
