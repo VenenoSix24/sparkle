@@ -1,5 +1,4 @@
 import { app, ipcMain } from 'electron'
-import axios from 'axios'
 import {
   mihomoChangeProxy,
   mihomoCloseConnections,
@@ -131,6 +130,7 @@ import {
 import { subStoreCollections, subStoreSubs } from '../core/subStoreApi'
 import path from 'path'
 import v8 from 'v8'
+import { proxyGet } from './proxy-request'
 import { getGistUrl } from '../resolve/gistApi'
 import { getIconDataURL, getImageDataURL } from './icon'
 import { startMonitor } from '../resolve/trafficMonitor'
@@ -434,20 +434,24 @@ export function registerIpcMainHandlers(): void {
 
 // IP 检测走主进程并经 mihomo 混合端口发出，查到的才是当前节点出口 IP；
 // Node 请求不走系统代理，必须显式指定
-async function mihomoProxyOption(): Promise<{ protocol: string; host: string; port: number } | undefined> {
+async function mihomoMixedPort(): Promise<number> {
   const { 'mixed-port': port = 7890 } = await getControledMihomoConfig()
-  return port != 0 ? { protocol: 'http', host: '127.0.0.1', port } : undefined
+  return port
 }
 
 async function fetchIPInfo(url: string): Promise<unknown> {
-  const res = await axios.get<unknown>(url, { timeout: 10000, proxy: await mihomoProxyOption() })
-  return res.data
+  const { data, status } = await proxyGet(url, {
+    timeout: 10000,
+    proxyPort: await mihomoMixedPort()
+  })
+  if (status !== 200) throw new Error(`IP service responded with status ${status}`)
+  return JSON.parse(data)
 }
 
 async function measureLatency(url: string): Promise<number | null> {
   try {
     const t0 = Date.now()
-    await axios.get(url, { timeout: 5000, proxy: await mihomoProxyOption() })
+    await proxyGet(url, { timeout: 5000, proxyPort: await mihomoMixedPort() })
     return Date.now() - t0
   } catch {
     return null
