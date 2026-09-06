@@ -26,19 +26,19 @@ const interactiveSelector = 'button:not(.pointer-events-none), [role="switch"]'
 const defaultSiderOrder = [
   'sysproxy',
   'tun',
-  'dns',
-  'sniff',
-  'proxy',
-  'connection',
-  'network',
-  'traffic',
   'profile',
-  'mihomo',
+  'proxy',
   'rule',
   'resource',
   'override',
+  'connection',
+  'mihomo',
+  'dns',
+  'sniff',
   'log',
-  'substore'
+  'substore',
+  'network',
+  'traffic'
 ]
 
 const siderCardRouteMap = {
