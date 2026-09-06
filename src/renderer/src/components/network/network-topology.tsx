@@ -350,31 +350,34 @@ const NetworkTopologyCard: React.FC = () => {
     return Math.max(containerWidth || 600, maxY + RIGHT_PADDING)
   }, [layout, containerWidth])
 
-  const svgHeight = useMemo(() => {
-    if (!layout) return 400
-    let minRow = Infinity
-    let maxRow = -Infinity
-    const visit = (node: LayoutNode): void => {
-      minRow = Math.min(minRow, node.y)
-      maxRow = Math.max(maxRow, node.y)
-      node.children.forEach(visit)
+  const bounds = useMemo(() => {
+    let minRow = 0
+    let maxRow = 0
+    if (layout) {
+      const visit = (node: LayoutNode): void => {
+        minRow = Math.min(minRow, node.y)
+        maxRow = Math.max(maxRow, node.y)
+        node.children.forEach(visit)
+      }
+      visit(layout)
     }
-    visit(layout)
-    return maxRow - minRow + NODE_HEIGHT + TOP_PADDING * 2
+    return { minRow, maxRow }
   }, [layout])
 
-  const offsetY = svgHeight / 2
+  const svgHeight = bounds.maxRow - bounds.minRow + NODE_HEIGHT + TOP_PADDING * 2
+  // 内容顶部对齐视口，而非以 y=0 居中（否则上半截被裁掉）
+  const translateY = TOP_PADDING + NODE_HEIGHT / 2 - bounds.minRow
 
   const renderNode = (node: LayoutNode): React.JSX.Element[] => {
     const elements: React.JSX.Element[] = []
     const color = NODE_COLORS[node.data.type]
     const x = LEFT_PADDING + node.x
-    const y = node.y - offsetY
+    const y = node.y + translateY
     const hasChildren = node.children.length > 0 || node.collapsed
 
     for (const child of node.children) {
       const cx = LEFT_PADDING + child.x
-      const cy = child.y - offsetY
+      const cy = child.y + translateY
       const sx = x + node.width / 2
       const tx = cx - child.width / 2
       const mx = (sx + tx) / 2
@@ -390,52 +393,55 @@ const NetworkTopologyCard: React.FC = () => {
       )
     }
 
-    elements.push(
-      <g
-        key={`node-${node.data.id}`}
-        transform={`translate(${x}, ${y})`}
-        style={{ cursor: hasChildren ? 'pointer' : 'default' }}
-        onClick={() => toggleCollapse(node)}
-      >
-        <title>
-          {`${node.data.name}\n${node.data.connections} 个连接\n${calcTraffic(node.data.traffic)}`}
-        </title>
-        <text
-          dy={-NODE_HEIGHT / 2 - 5}
-          textAnchor="middle"
-          fill={color.fill}
-          fontSize="10px"
-          fontWeight="500"
+    // depth 0 是虚拟 root，只画连线不画节点
+    if (node.depth > 0) {
+      elements.push(
+        <g
+          key={`node-${node.data.id}`}
+          transform={`translate(${x}, ${y})`}
+          style={{ cursor: hasChildren ? 'pointer' : 'default' }}
+          onClick={() => toggleCollapse(node)}
         >
-          {node.data.connections}
-        </text>
-        <rect
-          x={-node.width / 2}
-          y={-NODE_HEIGHT / 2}
-          width={node.width}
-          height={NODE_HEIGHT}
-          rx={6}
-          fill={color.bg}
-          stroke={color.fill}
-          strokeWidth={1.5}
-        />
-        <text dy="0.32em" textAnchor="middle" fill={color.fill} fontSize="11px" fontWeight="600">
-          {node.data.name}
-        </text>
-        {hasChildren && (
+          <title>
+            {`${node.data.name}\n${node.data.connections} 个连接\n${calcTraffic(node.data.traffic)}`}
+          </title>
           <text
-            x={node.width / 2 - 11}
-            dy="0.35em"
+            dy={-NODE_HEIGHT / 2 - 5}
             textAnchor="middle"
             fill={color.fill}
-            fontSize="14px"
-            fontWeight="700"
+            fontSize="10px"
+            fontWeight="500"
           >
-            {node.collapsed ? '+' : '−'}
+            {node.data.connections}
           </text>
-        )}
-      </g>
-    )
+          <rect
+            x={-node.width / 2}
+            y={-NODE_HEIGHT / 2}
+            width={node.width}
+            height={NODE_HEIGHT}
+            rx={6}
+            fill={color.bg}
+            stroke={color.fill}
+            strokeWidth={1.5}
+          />
+          <text dy="0.32em" textAnchor="middle" fill={color.fill} fontSize="11px" fontWeight="600">
+            {node.data.name}
+          </text>
+          {hasChildren && (
+            <text
+              x={node.width / 2 - 11}
+              dy="0.35em"
+              textAnchor="middle"
+              fill={color.fill}
+              fontSize="14px"
+              fontWeight="700"
+            >
+              {node.collapsed ? '+' : '−'}
+            </text>
+          )}
+        </g>
+      )
+    }
 
     node.children.forEach((child) => elements.push(...renderNode(child)))
     return elements
