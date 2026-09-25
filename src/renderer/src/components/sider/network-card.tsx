@@ -1,4 +1,4 @@
-import { Button, Card, CardBody, CardFooter, Tooltip } from '@heroui/react'
+import { Button, Tooltip, Card } from '@heroui/react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import React from 'react'
 import { useSortable } from '@dnd-kit/sortable'
@@ -13,7 +13,7 @@ interface Props {
 const NetworkCard: React.FC<Props> = (props) => {
   const { iconOnly } = props
   const { appConfig } = useAppConfig()
-  const { networkCardStatus = 'col-span-1' } = appConfig || {}
+  const { networkCardStatus = 'col-span-1', disableAnimation = false } = appConfig || {}
   const location = useLocation()
   const navigate = useNavigate()
   const match = location.pathname.includes('/network')
@@ -31,18 +31,19 @@ const NetworkCard: React.FC<Props> = (props) => {
   if (iconOnly) {
     return (
       <div className={`${networkCardStatus} flex justify-center`}>
-        <Tooltip content="网络信息" placement="right">
+        <Tooltip delay={0}>
           <Button
             size="sm"
             isIconOnly
-            color={match ? 'primary' : 'default'}
-            variant={match ? 'solid' : 'light'}
             onPress={() => {
               navigate('/network')
             }}
+            variant={match ? 'primary' : 'ghost'}
+            data-color={match ? 'primary' : 'default'}
           >
             <IoGitNetworkOutline className="text-[20px]" />
           </Button>
+          <Tooltip.Content placement="right">{'网络信息'}</Tooltip.Content>
         </Tooltip>
       </div>
     )
@@ -59,34 +60,37 @@ const NetworkCard: React.FC<Props> = (props) => {
       className={`${networkCardStatus} network-card`}
     >
       <Card
-        fullWidth
         ref={setNodeRef}
         {...attributes}
         {...listeners}
-        className={`${match ? 'bg-primary' : 'hover:bg-primary/30'} ${isDragging ? 'scale-[0.95] tap-highlight-transparent' : ''}`}
+        className={[
+          'w-full',
+          `${match ? 'bg-primary' : 'hover:bg-primary/30'} ${isDragging ? `${disableAnimation ? '' : 'scale-[0.95]'} tap-highlight-transparent` : ''}`
+        ]
+          .filter(Boolean)
+          .join(' ')}
       >
-        <CardBody className="pb-1 pt-0 px-0 overflow-y-visible">
+        <Card.Content className="pb-1 pt-0 px-0 overflow-y-visible">
           <div className="flex justify-between">
             <Button
               isIconOnly
+              variant="secondary"
+              data-color="default"
               className="bg-transparent pointer-events-none"
-              variant="flat"
-              color="default"
             >
               <IoGitNetworkOutline
-                color="default"
                 className={`${match ? 'text-primary-foreground' : 'text-foreground'} text-[24px]`}
               />
             </Button>
           </div>
-        </CardBody>
-        <CardFooter className="pt-1">
+        </Card.Content>
+        <Card.Footer className="pt-1">
           <h3
             className={`text-md font-bold ${match ? 'text-primary-foreground' : 'text-foreground'}`}
           >
             网络信息
           </h3>
-        </CardFooter>
+        </Card.Footer>
       </Card>
     </div>
   )

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
-import { Button } from '@heroui/react'
+import { Button, Tooltip } from '@heroui/react'
 import { useTheme } from 'next-themes'
 import {
   IoDesktopOutline,
@@ -26,33 +26,23 @@ interface TopologyNodeData {
   collapsed?: boolean
 }
 
+// 颜色取自 HeroUI 3 的 CSS 变量（存的是完整颜色，不能再用 hsl(var(...)) 包裹）
+function nodeColor(token: string): { fill: string; bg: string } {
+  return {
+    fill: `var(${token})`,
+    bg: `color-mix(in srgb, var(${token}) 15%, transparent)`
+  }
+}
+
 function getNodeColors() {
   return {
-    root: {
-      fill: 'hsl(var(--heroui-default-500))',
-      bg: 'hsl(var(--heroui-default-500) / 0.15)'
-    },
-    client: {
-      fill: 'hsl(var(--heroui-primary))',
-      bg: 'hsl(var(--heroui-primary) / 0.15)'
-    },
-    port: {
-      fill: 'hsl(var(--heroui-warning))',
-      bg: 'hsl(var(--heroui-warning) / 0.15)'
-    },
-    rule: {
-      fill: 'hsl(var(--heroui-secondary))',
-      bg: 'hsl(var(--heroui-secondary) / 0.15)'
-    },
-    group: {
-      fill: 'hsl(var(--heroui-success))',
-      bg: 'hsl(var(--heroui-success) / 0.15)'
-    },
-    proxy: {
-      fill: 'hsl(var(--heroui-danger))',
-      bg: 'hsl(var(--heroui-danger) / 0.15)'
-    },
-    baseContent: 'hsl(var(--heroui-foreground))'
+    root: nodeColor('--default-500'),
+    client: nodeColor('--accent'),
+    port: nodeColor('--warning'),
+    rule: nodeColor('--secondary'),
+    group: nodeColor('--success'),
+    proxy: nodeColor('--danger'),
+    baseContent: 'var(--foreground)'
   }
 }
 
@@ -522,16 +512,20 @@ const NetworkTopologyCard: React.FC = () => {
             <span>·</span>
             <span>{calcTraffic(stats.totalTraffic)}</span>
           </div>
-          <Button
-            size="sm"
-            isIconOnly
-            variant="light"
-            onPress={togglePause}
-            className={`h-7 w-7 min-w-0 ${isPaused ? 'text-warning' : ''}`}
-            title={isPaused ? '恢复' : '暂停'}
-          >
-            {isPaused ? <IoPlayOutline size={16} /> : <IoPauseOutline size={16} />}
-          </Button>
+          <Tooltip delay={0}>
+            <Button
+              size="sm"
+              isIconOnly
+              variant="ghost"
+              data-color="default"
+              onPress={togglePause}
+              className={`h-7 w-7 min-w-0 ${isPaused ? 'text-warning' : ''}`}
+              aria-label={isPaused ? '恢复' : '暂停'}
+            >
+              {isPaused ? <IoPlayOutline size={16} /> : <IoPauseOutline size={16} />}
+            </Button>
+            <Tooltip.Content>{isPaused ? '恢复' : '暂停'}</Tooltip.Content>
+          </Tooltip>
         </div>
       </div>
 
