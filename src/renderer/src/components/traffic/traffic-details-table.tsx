@@ -1,7 +1,7 @@
 import { calcTraffic } from '@renderer/utils/calc'
 import type { AggregatedData, DataUsageType } from '@renderer/utils/dataUsage'
 import { Button, Input, Spinner } from '@heroui/react'
-import { IoChevronDown, IoChevronForward, IoSearch } from 'react-icons/io5'
+import { IoChevronDown, IoChevronForward } from 'react-icons/io5'
 import React, { useState, useMemo, useEffect } from 'react'
 
 interface Props {
@@ -79,16 +79,13 @@ const TrafficDetailsTable: React.FC<Props> = ({
         </span>
         <div className="flex-1" />
         <Input
-          size="sm"
           className="w-52"
           placeholder={'搜索'}
           value={search}
-          onValueChange={(v) => {
-            setSearch(v)
+          onChange={(e) => {
+            setSearch(e.target.value)
             setPage(0)
           }}
-          startContent={<IoSearch className="text-foreground/40" size={14} />}
-          isClearable
         />
       </div>
       <div className="flex-1 overflow-auto">
@@ -234,7 +231,8 @@ const TrafficDetailsTable: React.FC<Props> = ({
         <div className="flex items-center gap-1">
           <Button
             size="sm"
-            variant="light"
+            variant="ghost"
+            data-color="default"
             isDisabled={safePage === 0}
             // 基于夹紧后的 safePage 翻页，否则列表变短后 page 越界
             onPress={() => setPage(Math.max(0, safePage - 1))}
@@ -251,8 +249,8 @@ const TrafficDetailsTable: React.FC<Props> = ({
                 )}
                 <Button
                   size="sm"
-                  variant={safePage === i ? 'solid' : 'light'}
-                  color={safePage === i ? 'primary' : 'default'}
+                  variant={safePage === i ? 'primary' : 'ghost'}
+                  data-color={safePage === i ? 'primary' : 'default'}
                   onPress={() => setPage(i)}
                   className="min-w-0 px-2"
                 >
@@ -262,7 +260,8 @@ const TrafficDetailsTable: React.FC<Props> = ({
             ))}
           <Button
             size="sm"
-            variant="light"
+            variant="ghost"
+            data-color="default"
             isDisabled={safePage >= totalPages - 1}
             onPress={() => setPage(Math.min(totalPages - 1, safePage + 1))}
             className="min-w-0 px-2"

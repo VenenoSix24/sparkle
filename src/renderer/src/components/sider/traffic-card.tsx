@@ -1,4 +1,4 @@
-import { Button, Card, CardBody, CardFooter, Tooltip } from '@heroui/react'
+import { Button, Tooltip, Card } from '@heroui/react'
 import BorderSwitch from '@renderer/components/base/border-swtich'
 import { useLocation, useNavigate } from 'react-router-dom'
 import React from 'react'
@@ -14,7 +14,8 @@ interface Props {
 const TrafficCard: React.FC<Props> = (props) => {
   const { iconOnly } = props
   const { appConfig, patchAppConfig } = useAppConfig()
-  const { enableTrafficLogger = true, trafficCardStatus = 'col-span-1' } = appConfig || {}
+  const { enableTrafficLogger = true, trafficCardStatus = 'col-span-1', disableAnimation = false } =
+    appConfig || {}
   const location = useLocation()
   const navigate = useNavigate()
   const match = location.pathname.includes('/traffic')
@@ -35,13 +36,14 @@ const TrafficCard: React.FC<Props> = (props) => {
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
     >
-      <Tooltip content="记录流量统计" placement="top">
+      <Tooltip delay={0}>
         <BorderSwitch
           isShowBorder={match && enableTrafficLogger}
           aria-label="记录流量统计"
           isSelected={enableTrafficLogger}
           onValueChange={(v) => patchAppConfig({ enableTrafficLogger: v })}
         />
+        <Tooltip.Content placement="top">{'记录流量统计'}</Tooltip.Content>
       </Tooltip>
     </div>
   )
@@ -49,18 +51,19 @@ const TrafficCard: React.FC<Props> = (props) => {
   if (iconOnly) {
     return (
       <div className={`${trafficCardStatus} flex justify-center`}>
-        <Tooltip content="用量统计" placement="right">
+        <Tooltip delay={0}>
           <Button
             size="sm"
             isIconOnly
-            color={match ? 'primary' : 'default'}
-            variant={match ? 'solid' : 'light'}
             onPress={() => {
               navigate('/traffic')
             }}
+            variant={match ? 'primary' : 'ghost'}
+            data-color={match ? 'primary' : 'default'}
           >
             <MdOutlineDataUsage className="text-[20px]" />
           </Button>
+          <Tooltip.Content placement="right">{'用量统计'}</Tooltip.Content>
         </Tooltip>
       </div>
     )
@@ -77,35 +80,38 @@ const TrafficCard: React.FC<Props> = (props) => {
       className={`${trafficCardStatus} traffic-card`}
     >
       <Card
-        fullWidth
         ref={setNodeRef}
         {...attributes}
         {...listeners}
-        className={`${match ? 'bg-primary' : 'hover:bg-primary/30'} ${isDragging ? 'scale-[0.95] tap-highlight-transparent' : ''}`}
+        className={[
+          'w-full',
+          `${match ? 'bg-primary' : 'hover:bg-primary/30'} ${isDragging ? `${disableAnimation ? '' : 'scale-[0.95]'} tap-highlight-transparent` : ''}`
+        ]
+          .filter(Boolean)
+          .join(' ')}
       >
-        <CardBody className="pb-1 pt-0 px-0 overflow-y-visible">
+        <Card.Content className="pb-1 pt-0 px-0 overflow-y-visible">
           <div className="flex justify-between items-start">
             <Button
               isIconOnly
+              variant="secondary"
+              data-color="default"
               className="bg-transparent pointer-events-none"
-              variant="flat"
-              color="default"
             >
               <MdOutlineDataUsage
-                color="default"
                 className={`${match ? 'text-primary-foreground' : 'text-foreground'} text-[24px]`}
               />
             </Button>
             <div className="pt-2">{loggerSwitch}</div>
           </div>
-        </CardBody>
-        <CardFooter className="pt-1">
+        </Card.Content>
+        <Card.Footer className="pt-1">
           <h3
             className={`text-md font-bold ${match ? 'text-primary-foreground' : 'text-foreground'}`}
           >
             用量统计
           </h3>
-        </CardFooter>
+        </Card.Footer>
       </Card>
     </div>
   )

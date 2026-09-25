@@ -1,5 +1,11 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
-import { closestCorners, DndContext, type DragEndEvent } from '@dnd-kit/core'
+import {
+  closestCenter,
+  DndContext,
+  pointerWithin,
+  type CollisionDetection,
+  type DragEndEvent
+} from '@dnd-kit/core'
 import { SortableContext } from '@dnd-kit/sortable'
 import { useNavigate } from 'react-router-dom'
 import { useAppConfig } from '@renderer/hooks/use-app-config'
@@ -9,8 +15,6 @@ import ConnCard from './conn-card'
 import DNSCard from './dns-card'
 import LogCard from './log-card'
 import MihomoCoreCard from './mihomo-core-card'
-import NetworkCard from './network-card'
-import TrafficCard from './traffic-card'
 import OverrideCard from './override-card'
 import ProfileCard from './profile-card'
 import ProxyCard from './proxy-card'
@@ -20,6 +24,22 @@ import SniffCard from './sniff-card'
 import SubStoreCard from './substore-card'
 import SysproxySwitcher from './sysproxy-switcher'
 import TunSwitcher from './tun-switcher'
+import NetworkCard from './network-card'
+import TrafficCard from './traffic-card'
+import { siderSortingStrategy } from './sider-sorting'
+import SiderDropPlaceholder from './sider-drop-placeholder'
+
+const detectCardCollision: CollisionDetection = (args) => {
+  const visibleArgs = {
+    ...args,
+    droppableContainers: args.droppableContainers.filter(({ id }) => {
+      const rect = args.droppableRects.get(id)
+      return rect && rect.width > 0 && rect.height > 0
+    })
+  }
+  const pointerCollisions = pointerWithin(visibleArgs)
+  return pointerCollisions.length > 0 ? pointerCollisions : closestCenter(visibleArgs)
+}
 
 const interactiveSelector = 'button:not(.pointer-events-none), [role="switch"]'
 
@@ -48,15 +68,15 @@ const siderCardRouteMap = {
   'proxy-card': '/proxies',
   'mihomo-core-card': '/mihomo',
   'conn-card': '/connections',
-  'network-card': '/network',
-  'traffic-card': '/traffic',
   'dns-card': '/dns',
   'sniff-card': '/sniffer',
   'log-card': '/logs',
   'rule-card': '/rules',
   'resource-card': '/resources',
   'override-card': '/override',
-  'substore-card': '/substore'
+  'substore-card': '/substore',
+  'network-card': '/network',
+  'traffic-card': '/traffic'
 } as const
 
 const siderCardSelector = Object.keys(siderCardRouteMap)
@@ -70,15 +90,15 @@ const componentMap = {
   proxy: ProxyCard,
   mihomo: MihomoCoreCard,
   connection: ConnCard,
-  network: NetworkCard,
-  traffic: TrafficCard,
   dns: DNSCard,
   sniff: SniffCard,
   log: LogCard,
   rule: RuleCard,
   resource: ResourceCard,
   override: OverrideCard,
-  substore: SubStoreCard
+  substore: SubStoreCard,
+  network: NetworkCard,
+  traffic: TrafficCard
 }
 
 interface Props {
@@ -95,6 +115,7 @@ export default function SiderCards({ iconOnly = false }: Props): React.JSX.Eleme
     return [...saved.filter((key) => key in componentMap), ...missing]
   }, [appConfig?.siderOrder])
   const [order, setOrder] = useState(siderOrder)
+  const gridRef = useRef<HTMLDivElement>(null)
   const suppressClickRef = useRef(false)
   const suppressClickTimerRef = useRef<number | undefined>(undefined)
   const navigate = useNavigate()
@@ -131,6 +152,7 @@ export default function SiderCards({ iconOnly = false }: Props): React.JSX.Eleme
       const newOrder = order.slice()
       const activeIndex = newOrder.indexOf(active.id as string)
       const overIndex = newOrder.indexOf(over.id as string)
+      if (activeIndex < 0 || overIndex < 0) return
       newOrder.splice(activeIndex, 1)
       newOrder.splice(overIndex, 0, active.id as string)
       setOrder(newOrder)
@@ -175,7 +197,7 @@ export default function SiderCards({ iconOnly = false }: Props): React.JSX.Eleme
     <div style={{ overflowX: 'clip' }}>
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={detectCardCollision}
         onDragStart={() => {
           suppressClickRef.current = true
         }}
@@ -184,8 +206,15 @@ export default function SiderCards({ iconOnly = false }: Props): React.JSX.Eleme
           void onDragEnd(event).finally(releaseClickSuppression)
         }}
       >
-        <div className="grid grid-cols-2 gap-2 m-2" onClickCapture={onClickCapture}>
-          <SortableContext items={order}>{cards}</SortableContext>
+        <div
+          ref={gridRef}
+          className="sider-cards relative grid grid-cols-2 gap-2 m-2"
+          onClickCapture={onClickCapture}
+        >
+          <SiderDropPlaceholder order={order} gridRef={gridRef} />
+          <SortableContext items={order} strategy={siderSortingStrategy}>
+            {cards}
+          </SortableContext>
         </div>
       </DndContext>
     </div>

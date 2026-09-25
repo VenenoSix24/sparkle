@@ -1,4 +1,6 @@
-import { Button, Card, CardBody } from '@heroui/react'
+import { Button, Spinner, Card } from '@heroui/react'
+import { Pressable } from 'react-aria'
+
 import { mihomoUnfixedProxy } from '@renderer/utils/ipc'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FaMapPin } from 'react-icons/fa6'
@@ -97,7 +99,10 @@ const ProxyItem: React.FC<Props> = (props) => {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const touchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const touchStartPos = useRef<{ x: number; y: number } | null>(null)
+  const touchStartPos = useRef<{
+    x: number
+    y: number
+  } | null>(null)
   const touchTriggeredRef = useRef(false)
   const lastTouchTime = useRef(0)
   const [showTooltip, setShowTooltip] = useState(false)
@@ -216,8 +221,7 @@ const ProxyItem: React.FC<Props> = (props) => {
       onTouchMove={showProxyDetailTooltip ? handleTouchMove : undefined}
       onTouchEnd={showProxyDetailTooltip ? handleTouchEnd : undefined}
     >
-      <Card
-        as="div"
+      <Pressable
         onPress={() => {
           if (touchTriggeredRef.current) {
             touchTriggeredRef.current = false
@@ -225,134 +229,149 @@ const ProxyItem: React.FC<Props> = (props) => {
           }
           onSelect(group.name, proxy.name)
         }}
-        isPressable
-        fullWidth
-        shadow="sm"
-        className={`${fixed ? 'bg-secondary/30' : selected ? 'bg-primary/15 dark:bg-primary/30' : 'bg-content2'}`}
-        radius="sm"
       >
-        <CardBody className="py-1.5 px-2">
-          <div
-            className={`flex ${proxyDisplayLayout === 'double' ? 'gap-1' : 'justify-between items-center'}`}
-          >
-            {proxyDisplayLayout === 'double' ? (
-              <>
-                <div className="flex flex-col gap-0 flex-1 min-w-0">
-                  <div className="text-ellipsis overflow-hidden whitespace-nowrap">
-                    <div className="flag-emoji inline">{proxy.name}</div>
-                  </div>
-                  <div className="flex items-center gap-1 mt-0.5 overflow-hidden whitespace-nowrap">
-                    <ProxyChip
-                      label={proxy.type}
-                      className={coloredTags ? TYPE_COLORS[proxy.type.toLowerCase()] : undefined}
-                    />
-                    {PROXY_PROTOCOLS.filter(
-                      (protocol) => ((proxy as unknown) as Record<string, unknown>)[protocol]
-                    ).map((protocol) => (
+        <Card
+          className={[
+            'w-full',
+            `${fixed ? 'bg-secondary/30' : selected ? 'bg-primary/15 dark:bg-primary/30' : 'bg-content2'}`
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          data-shadow="sm"
+          data-radius="sm"
+          data-pressable="true"
+          role="button"
+          tabIndex={0}
+        >
+          <Card.Content className="overflow-hidden px-2 py-1">
+            <div
+              className={`flex ${proxyDisplayLayout === 'double' ? 'gap-1' : 'justify-between items-center'}`}
+            >
+              {proxyDisplayLayout === 'double' ? (
+                <>
+                  <div className="flex flex-col gap-0 flex-1 min-w-0">
+                    <div className="text-ellipsis overflow-hidden whitespace-nowrap leading-5">
+                      <div className="flag-emoji inline">{proxy.name}</div>
+                    </div>
+                    <div className="flex items-center gap-1 mt-0.5 overflow-hidden whitespace-nowrap">
                       <ProxyChip
-                        key={protocol}
-                        label={protocol.toUpperCase()}
-                        className={coloredTags && protocol === 'udp' ? TYPE_COLORS.udp : undefined}
+                        label={proxy.type}
+                        className={coloredTags ? TYPE_COLORS[proxy.type.toLowerCase()] : undefined}
                       />
-                    ))}
-                    {shouldShowGroupSelectedProxy && (
-                      <span className="text-[10px] leading-none px-1 py-0.5 rounded-md ring-1 ring-inset ring-black/10 dark:ring-white/15 text-primary bg-primary/10 truncate min-w-0">
-                        → {resolvedNow || proxy.now}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center justify-center gap-0.5 shrink-0">
-                  {fixed && (
-                    <Button
-                      isIconOnly
-                      color="danger"
-                      onPress={async () => {
-                        await mihomoUnfixedProxy(group.name)
-                        mutateProxies()
-                      }}
-                      variant="light"
-                      className="h-6 w-6 min-w-6 p-0 text-xs"
-                    >
-                      <FaMapPin className="text-xs le" />
-                    </Button>
-                  )}
-                  <Button
-                    isIconOnly
-                    isLoading={loading}
-                    color={delayColor(delay)}
-                    onPress={onDelay}
-                    variant="light"
-                    className="h-8 w-8 min-w-8 p-0 text-xs"
-                  >
-                    {delayText(delay)}
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="text-ellipsis overflow-hidden whitespace-nowrap">
-                  <div className="flag-emoji inline">{proxy.name}</div>
-                  {proxyDisplayLayout === 'single' && (
-                    <>
-                      <span className="inline-flex items-center gap-1 ml-2 align-middle">
+                      {PROXY_PROTOCOLS.filter(
+                        (protocol) => ((proxy as unknown) as Record<string, unknown>)[protocol]
+                      ).map((protocol) => (
                         <ProxyChip
-                          label={proxy.type}
-                          className={coloredTags ? TYPE_COLORS[proxy.type.toLowerCase()] : undefined}
+                          key={protocol}
+                          label={protocol.toUpperCase()}
+                          className={
+                            coloredTags && protocol === 'udp' ? TYPE_COLORS.udp : undefined
+                          }
                         />
-                        {PROXY_PROTOCOLS.filter(
-                          (protocol) => ((proxy as unknown) as Record<string, unknown>)[protocol]
-                        ).map((protocol) => (
-                          <ProxyChip
-                            key={protocol}
-                            label={protocol.toUpperCase()}
-                            className={coloredTags && protocol === 'udp' ? TYPE_COLORS.udp : undefined}
-                          />
-                        ))}
-                      </span>
+                      ))}
                       {shouldShowGroupSelectedProxy && (
-                        <span className="inline text-[10px] leading-none px-1 py-0.5 rounded-md ring-1 ring-inset ring-black/10 dark:ring-white/15 text-primary bg-primary/10 align-middle ml-1">
+                        <span className="text-[10px] leading-none px-1 py-0.5 rounded-md ring-1 ring-inset ring-black/10 dark:ring-white/15 text-primary bg-primary/10 truncate min-w-0">
                           → {resolvedNow || proxy.now}
                         </span>
                       )}
-                    </>
-                  )}
-                </div>
-                <div className="flex items-center gap-0.5 shrink-0">
-                  {fixed && (
-                    <div className="flex items-center">
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-center gap-0.5 shrink-0">
+                    {fixed && (
                       <Button
                         isIconOnly
-                        color="danger"
                         onPress={async () => {
                           await mihomoUnfixedProxy(group.name)
                           mutateProxies()
                         }}
-                        variant="light"
+                        variant="ghost"
+                        data-color="danger"
                         className="h-6 w-6 min-w-6 p-0 text-xs"
                       >
                         <FaMapPin className="text-xs le" />
                       </Button>
-                    </div>
-                  )}
-                  <div className="flex items-center">
+                    )}
                     <Button
                       isIconOnly
-                      isLoading={loading}
-                      color={delayColor(delay)}
                       onPress={onDelay}
-                      variant="light"
-                      className="h-full w-8 min-w-8 p-0 text-sm"
+                      variant="ghost"
+                      data-color={delayColor(delay)}
+                      className="h-8 w-8 min-w-8 p-0 text-xs"
+                      isPending={loading}
+                      isDisabled={loading}
                     >
-                      {delayText(delay)}
+                      {loading ? <Spinner size="sm" color="current" /> : delayText(delay)}
                     </Button>
                   </div>
-                </div>
-              </>
-            )}
-          </div>
-        </CardBody>
-      </Card>
+                </>
+              ) : (
+                <>
+                  <div className="text-ellipsis overflow-hidden whitespace-nowrap">
+                    <div className="flag-emoji inline">{proxy.name}</div>
+                    {proxyDisplayLayout === 'single' && (
+                      <>
+                        <span className="inline-flex items-center gap-1 ml-2 align-middle">
+                          <ProxyChip
+                            label={proxy.type}
+                            className={coloredTags ? TYPE_COLORS[proxy.type.toLowerCase()] : undefined}
+                          />
+                          {PROXY_PROTOCOLS.filter(
+                            (protocol) => ((proxy as unknown) as Record<string, unknown>)[protocol]
+                          ).map((protocol) => (
+                            <ProxyChip
+                              key={protocol}
+                              label={protocol.toUpperCase()}
+                              className={
+                                coloredTags && protocol === 'udp' ? TYPE_COLORS.udp : undefined
+                              }
+                            />
+                          ))}
+                        </span>
+                        {shouldShowGroupSelectedProxy && (
+                          <span className="inline text-[10px] leading-none px-1 py-0.5 rounded-md ring-1 ring-inset ring-black/10 dark:ring-white/15 text-primary bg-primary/10 align-middle ml-1">
+                            → {resolvedNow || proxy.now}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    {fixed && (
+                      <div className="flex items-center">
+                        <Button
+                          isIconOnly
+                          onPress={async () => {
+                            await mihomoUnfixedProxy(group.name)
+                            mutateProxies()
+                          }}
+                          variant="ghost"
+                          data-color="danger"
+                          className="h-6 w-6 min-w-6 p-0 text-xs"
+                        >
+                          <FaMapPin className="text-xs le" />
+                        </Button>
+                      </div>
+                    )}
+                    <div className="flex items-center">
+                      <Button
+                        isIconOnly
+                        onPress={onDelay}
+                        variant="ghost"
+                        data-color={delayColor(delay)}
+                        className="h-full w-8 min-w-8 p-0 text-sm"
+                        isPending={loading}
+                        isDisabled={loading}
+                      >
+                        {loading ? <Spinner size="sm" color="current" /> : delayText(delay)}
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </Card.Content>
+        </Card>
+      </Pressable>
       {showProxyDetailTooltip && (
         <ProxyDetailTooltip
           proxy={proxy}

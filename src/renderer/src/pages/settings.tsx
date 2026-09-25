@@ -1,4 +1,5 @@
 import { Button } from '@heroui/react'
+
 import BasePage from '@renderer/components/base/base-page'
 // import { CgWebsite } from 'react-icons/cg'
 import { IoLogoGithub } from 'react-icons/io5'
@@ -28,18 +29,20 @@ const Settings: React.FC = () => {
           <Button
             isIconOnly
             size="sm"
-            variant="light"
-            className="app-nodrag"
             onPress={() => setModal('github')}
+            variant="ghost"
+            data-color="default"
+            className="app-nodrag"
           >
             <IoLogoGithub className="text-lg" />
           </Button>
           <Button
             isIconOnly
             size="sm"
-            variant="light"
-            className="app-nodrag"
             onPress={() => setModal('telegram')}
+            variant="ghost"
+            data-color="default"
+            className="app-nodrag"
           >
             <FaTelegramPlane className="text-lg" />
           </Button>

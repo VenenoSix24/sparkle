@@ -11,7 +11,7 @@ import {
   type AggregatedData,
   type DataUsageType
 } from '@renderer/utils/dataUsage'
-import { Button, Tab, Tabs } from '@heroui/react'
+import { Button, Tabs, Tooltip } from '@heroui/react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { calcTraffic } from '@renderer/utils/calc'
 import { CgTrash } from 'react-icons/cg'
@@ -208,24 +208,36 @@ const TrafficPage: React.FC = () => {
       header={
         <div className="app-nodrag flex items-center gap-2">
           <Tabs
-            size="sm"
             selectedKey={timeRange}
             onSelectionChange={(k) => setTimeRange(k as TimeRange)}
+            data-color="primary"
+            data-size="sm"
+            data-full-width={false}
           >
-            {TIME_RANGES.map((r) => (
-              <Tab key={r} title={timeRangeLabel[r]} />
-            ))}
+            <Tabs.ListContainer>
+              <Tabs.List aria-label="时间范围">
+                {TIME_RANGES.map((r) => (
+                  <Tabs.Tab key={r} id={r}>
+                    {timeRangeLabel[r]}
+                    <Tabs.Indicator />
+                  </Tabs.Tab>
+                ))}
+              </Tabs.List>
+            </Tabs.ListContainer>
           </Tabs>
-          <Button
-            size="sm"
-            variant="light"
-            color="danger"
-            isIconOnly
-            title={'清空数据'}
-            onPress={handleClearAll}
-          >
-            <CgTrash className="text-[16px]" />
-          </Button>
+          <Tooltip delay={0}>
+            <Button
+              size="sm"
+              variant="ghost"
+              data-color="danger"
+              isIconOnly
+              aria-label="清空数据"
+              onPress={handleClearAll}
+            >
+              <CgTrash className="text-[16px]" />
+            </Button>
+            <Tooltip.Content>{'清空数据'}</Tooltip.Content>
+          </Tooltip>
         </div>
       }
     >
@@ -249,13 +261,22 @@ const TrafficPage: React.FC = () => {
           ))}
         </div>
         <Tabs
-          size="sm"
           selectedKey={activeView}
           onSelectionChange={(k) => setActiveView(k as DataUsageType)}
+          data-color="primary"
+          data-size="sm"
+          data-full-width={false}
         >
-          {(Object.keys(viewLabels) as DataUsageType[]).map((v) => (
-            <Tab key={v} title={viewLabels[v]} />
-          ))}
+          <Tabs.ListContainer>
+            <Tabs.List aria-label="统计维度">
+              {(Object.keys(viewLabels) as DataUsageType[]).map((v) => (
+                <Tabs.Tab key={v} id={v}>
+                  {viewLabels[v]}
+                  <Tabs.Indicator />
+                </Tabs.Tab>
+              ))}
+            </Tabs.List>
+          </Tabs.ListContainer>
         </Tabs>
         <div className="grid grid-cols-4 gap-3">
           <div className="col-span-1 h-52 overflow-hidden rounded-xl border border-foreground/10 bg-content1 p-3 shadow-sm">

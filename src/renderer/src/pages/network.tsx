@@ -2,7 +2,7 @@ import 'flag-icons/css/flag-icons.min.css'
 import BasePage from '@renderer/components/base/base-page'
 import NetworkTopologyCard from '@renderer/components/network/network-topology'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Button, Input, Select, SelectItem } from '@heroui/react'
+import { Button, Input, ListBox, Select } from '@heroui/react'
 import {
   DndContext,
   closestCorners,
@@ -481,11 +481,12 @@ const NetworkPage: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Select
-                        size="sm"
+                        aria-label="IP 数据源"
                         className="w-28"
-                        selectedKeys={[provider]}
-                        onSelectionChange={(keys) => {
-                          const val = Array.from(keys)[0] as IPProvider
+                        data-size="sm"
+                        value={provider}
+                        onChange={(v) => {
+                          const val = v as IPProvider
                           if (val) {
                             setProvider(val)
                             patchAppConfig({ networkIPProvider: val })
@@ -493,16 +494,30 @@ const NetworkPage: React.FC = () => {
                           }
                         }}
                       >
-                        {providers.map((p) => (
-                          <SelectItem key={p.value}>{p.label}</SelectItem>
-                        ))}
+                        <Select.Trigger className="data-[hover=true]:bg-default-200">
+                          <Select.Value />
+                          <Select.Indicator />
+                        </Select.Trigger>
+                        <Select.Popover placement="bottom" shouldFlip containerPadding={56}>
+                          <ListBox>
+                            {providers.map((p) => (
+                              <ListBox.Item key={p.value} id={p.value} textValue={p.label}>
+                                {p.label}
+                                <ListBox.ItemIndicator />
+                              </ListBox.Item>
+                            ))}
+                          </ListBox>
+                        </Select.Popover>
                       </Select>
                       <Button
                         size="sm"
                         isIconOnly
-                        variant="light"
-                        isLoading={loading}
+                        variant="ghost"
+                        data-color="default"
+                        isPending={loading}
+                        isDisabled={loading}
                         onPress={() => fetchIP()}
+                        aria-label="刷新"
                         className="h-7 w-7 min-w-0"
                       >
                         <IoRefresh size={16} />
@@ -631,7 +646,8 @@ const NetworkPage: React.FC = () => {
                       <Button
                         size="sm"
                         isIconOnly
-                        variant={isAddingLatencyTarget ? 'flat' : 'light'}
+                        variant="ghost"
+                        data-color="default"
                         className="h-7 w-7 min-w-0"
                         aria-label="添加测速目标"
                         onPress={() => setIsAddingLatencyTarget(true)}
@@ -641,10 +657,12 @@ const NetworkPage: React.FC = () => {
                       <Button
                         size="sm"
                         isIconOnly
-                        variant="light"
-                        isLoading={testingLatency}
+                        variant="ghost"
+                        data-color="default"
+                        isPending={testingLatency}
                         isDisabled={testingLatency}
                         onPress={testAllLatencies}
+                        aria-label="重新测速"
                         className="h-7 w-7 min-w-0"
                       >
                         <IoRefresh size={16} />
@@ -655,29 +673,25 @@ const NetworkPage: React.FC = () => {
                   {isAddingLatencyTarget && (
                     <div className="mb-3 flex flex-wrap items-start gap-2">
                       <Input
-                        size="sm"
                         className="min-w-32 flex-1"
                         value={customLatencyName}
                         placeholder="名称"
                         aria-label="测速目标名称"
-                        isInvalid={customLatencyNameError}
-                        errorMessage={customLatencyNameError ? '请输入名称' : undefined}
-                        onValueChange={(v) => {
-                          setCustomLatencyName(v)
+                        data-invalid={customLatencyNameError ? 'true' : undefined}
+                        onChange={(e) => {
+                          setCustomLatencyName(e.target.value)
                           setCustomLatencyNameError(false)
                         }}
                         onKeyDown={submitLatencyTargetOnEnter}
                       />
                       <Input
-                        size="sm"
                         className="min-w-48 flex-[1.5]"
                         value={customLatencyUrl}
                         placeholder="https://example.com"
                         aria-label="测速目标 URL"
-                        isInvalid={customLatencyUrlError}
-                        errorMessage={customLatencyUrlError ? 'URL 无效' : undefined}
-                        onValueChange={(v) => {
-                          setCustomLatencyUrl(v)
+                        data-invalid={customLatencyUrlError ? 'true' : undefined}
+                        onChange={(e) => {
+                          setCustomLatencyUrl(e.target.value)
                           setCustomLatencyUrlError(false)
                         }}
                         onKeyDown={submitLatencyTargetOnEnter}
@@ -685,8 +699,8 @@ const NetworkPage: React.FC = () => {
                       <Button
                         size="sm"
                         isIconOnly
-                        variant="flat"
-                        color="primary"
+                        variant="secondary"
+                        data-color="primary"
                         className="h-8 w-8 min-w-0"
                         aria-label="保存"
                         onPress={addCustomLatencyTarget}
@@ -696,7 +710,8 @@ const NetworkPage: React.FC = () => {
                       <Button
                         size="sm"
                         isIconOnly
-                        variant="light"
+                        variant="ghost"
+                        data-color="default"
                         className="h-8 w-8 min-w-0"
                         aria-label="取消"
                         onPress={closeLatencyTargetForm}
@@ -740,8 +755,8 @@ const NetworkPage: React.FC = () => {
                             <Button
                               size="sm"
                               isIconOnly
-                              variant="light"
-                              color="danger"
+                              variant="ghost"
+                              data-color="danger"
                               className="h-6 w-6 min-w-0 shrink-0"
                               aria-label="删除测速目标"
                               onPress={() => removeCustomLatencyTarget(target.url)}
