@@ -108,7 +108,11 @@ jobs:
 
           TARGET_TAG=$VERSION
           if [[ "$EVENT_NAME" == "workflow_dispatch" && -n "$INPUT_TAG" ]]; then
-            TARGET_TAG=$INPUT_TAG
+            TARGET_TAG=${INPUT_TAG#v}
+            if [[ "$TARGET_TAG" != "$VERSION" ]]; then
+              echo "Release tag must equal the version (tag=$INPUT_TAG, version=$VERSION)"
+              exit 1
+            fi
           fi
           git check-ref-format "refs/tags/$TARGET_TAG"
 
@@ -308,3 +312,17 @@ jobs:
             latest.yml
             bin/dist/*
           make_latest: true
+
+      - name: Verify Published Tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/${{ github.repository }}/releases/tags/$RELEASE_TAG" --jq '.html_url'
+          MANIFEST_TAG=$(gh release download "$RELEASE_TAG" -p latest.yml -O - | sed -n 's/^tag: *//p' | head -1)
+          if [[ "$MANIFEST_TAG" != "$RELEASE_TAG" ]]; then
+            echo "latest.yml tag '$MANIFEST_TAG' does not match release tag '$RELEASE_TAG'" >&2
+            exit 1
+          fi

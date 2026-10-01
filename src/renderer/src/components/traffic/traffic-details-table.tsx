@@ -1,7 +1,8 @@
 import { calcTraffic } from '@renderer/utils/calc'
 import type { AggregatedData, DataUsageType } from '@renderer/utils/dataUsage'
-import { Button, Input, Spinner } from '@heroui/react'
+import { Button, InputGroup, Spinner } from '@heroui/react'
 import { IoChevronDown, IoChevronForward } from 'react-icons/io5'
+import { MdClose, MdOutlineSearch } from 'react-icons/md'
 import React, { useState, useMemo, useEffect } from 'react'
 
 interface Props {
@@ -78,15 +79,35 @@ const TrafficDetailsTable: React.FC<Props> = ({
           {selectedRow}
         </span>
         <div className="flex-1" />
-        <Input
-          className="w-52"
-          placeholder={'搜索'}
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value)
-            setPage(0)
-          }}
-        />
+        <InputGroup className="w-52">
+          <InputGroup.Prefix>
+            <MdOutlineSearch className="text-foreground-500" />
+          </InputGroup.Prefix>
+          <InputGroup.Input
+            aria-label="搜索"
+            placeholder={'搜索'}
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value)
+              setPage(0)
+            }}
+          />
+          {search && (
+            <InputGroup.Suffix>
+              <button
+                type="button"
+                aria-label="清除搜索"
+                className="cursor-pointer text-foreground-500 hover:text-foreground"
+                onClick={() => {
+                  setSearch('')
+                  setPage(0)
+                }}
+              >
+                <MdClose />
+              </button>
+            </InputGroup.Suffix>
+          )}
+        </InputGroup>
       </div>
       <div className="flex-1 overflow-auto">
         <table className="w-full text-xs">
