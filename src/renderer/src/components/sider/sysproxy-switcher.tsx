@@ -45,12 +45,17 @@ const SysproxySwitcher: React.FC<Props> = (props) => {
   const disabled = mixedPort == 0
   const onChange = async (enable: boolean): Promise<void> => {
     if (mode == 'manual' && disabled) return
+    const previousEnable = !enable
+    // 先落配置：慢的系统代理设置不必阻塞开关反馈
     try {
-      await triggerSysProxy(enable, onlyActiveDevice)
       await patchAppConfig({ sysProxy: { enable } })
       window.electron.ipcRenderer.send('updateFloatingWindow')
       window.electron.ipcRenderer.send('updateTrayMenu')
+      await triggerSysProxy(enable, onlyActiveDevice)
     } catch (e) {
+      await patchAppConfig({ sysProxy: { enable: previousEnable } })
+      window.electron.ipcRenderer.send('updateFloatingWindow')
+      window.electron.ipcRenderer.send('updateTrayMenu')
       notify(e, { variant: 'danger' })
     }
   }

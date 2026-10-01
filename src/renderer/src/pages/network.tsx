@@ -453,6 +453,15 @@ const NetworkPage: React.FC = () => {
     fetchIP()
   }, [sysproxyEnabled, tunEnabled])
 
+  // 系统代理生效后补一次，避免读到切换前的出口
+  useEffect(() => {
+    const unsubscribe = window.electron.ipcRenderer.on('sysproxyUpdated', () => {
+      fetchIP()
+      testAllLatencies()
+    })
+    return unsubscribe
+  }, [fetchIP, testAllLatencies])
+
   const handleCopy = useCallback(() => {
     if (!ipInfo?.ip) return
     navigator.clipboard.writeText(ipInfo.ip)

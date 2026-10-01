@@ -38,11 +38,19 @@ export function triggerSysProxy(
     clearTimeout(triggerSysProxyTimer)
     triggerSysProxyTimer = null
   }
-  const task = triggerSysProxyTask.then(() =>
-    triggerSysProxyImpl(enable, onlyActiveDevice, useRegistry, request)
-  )
+  const task = triggerSysProxyTask.then(async () => {
+    await triggerSysProxyImpl(enable, onlyActiveDevice, useRegistry, request)
+    notifySysProxyApplied(enable)
+  })
   triggerSysProxyTask = task.catch(() => {})
   return task
+}
+
+// 系统代理设置是异步且耗时的，渲染层需要等真正生效后再取出口 IP
+function notifySysProxyApplied(enable: boolean): void {
+  void import('../index').then(({ mainWindow }) => {
+    mainWindow?.webContents.send('sysproxyUpdated', enable)
+  })
 }
 
 async function triggerSysProxyImpl(
