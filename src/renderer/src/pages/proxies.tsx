@@ -30,6 +30,7 @@ import CollapseInput from '@renderer/components/base/collapse-input'
 import { includesIgnoreCase } from '@renderer/utils/includes'
 import { useControledMihomoConfig } from '@renderer/hooks/use-controled-mihomo-config'
 import { runDelayTestsWithConcurrency } from '@renderer/utils/delay-test'
+import { loadProxyGroupOpenState, saveProxyGroupOpenState } from '@renderer/utils/proxy-group-open-state'
 
 type ProxyLike = ControllerProxiesDetail | ControllerGroupDetail
 
@@ -189,9 +190,20 @@ interface ProxyGroupPageCache {
 }
 
 const proxyGroupPageCache: ProxyGroupPageCache = {
-  isOpen: {},
+  isOpen: loadProxyGroupOpenState(),
   searchValue: {},
   scrollTop: 0
+}
+
+let saveGroupOpenStateTimer: ReturnType<typeof setTimeout> | null = null
+
+function rememberGroupOpenState(groupName: string, isOpen: boolean): void {
+  proxyGroupPageCache.isOpen[groupName] = isOpen
+  if (saveGroupOpenStateTimer) clearTimeout(saveGroupOpenStateTimer)
+  saveGroupOpenStateTimer = setTimeout(() => {
+    saveGroupOpenStateTimer = null
+    saveProxyGroupOpenState(proxyGroupPageCache.isOpen)
+  }, 300)
 }
 
 const Proxies: React.FC = () => {
@@ -229,6 +241,9 @@ const Proxies: React.FC = () => {
   const isOpenContentRef = useRef<boolean[]>(isOpen)
   isOpenContentRef.current = isOpenContent
   const [delaying, setDelaying] = useState(Array(groups.length).fill(false))
+  const [testingProxies, setTestingProxies] = useState<Set<string>>(new Set())
+  const testingProxiesRef = useRef(testingProxies)
+  testingProxiesRef.current = testingProxies
   const [searchValue, setSearchValue] = useState<string[]>(() => {
     if (
       rememberProxyGroupOpenState &&
@@ -370,6 +385,60 @@ const Proxies: React.FC = () => {
     })
   }, [])
 
+  const pendingDelayResults = useRef(new Map<string, Map<string, number>>())
+  const flushDelayTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // 逐个节点出结果就刷新，不必等整组测完（对齐 clash-party 的体感）
+  const flushDelayResults = useCallback((): void => {
+    if (flushDelayTimer.current) {
+      clearTimeout(flushDelayTimer.current)
+      flushDelayTimer.current = null
+    }
+    const results = pendingDelayResults.current
+    if (results.size === 0) return
+    pendingDelayResults.current = new Map()
+    const time = new Date().toISOString()
+    mutate(
+      (current) => {
+        if (!current) return current
+        return current.map((group) => {
+          const groupResults = results.get(group.name)
+          if (!groupResults) return group
+          return {
+            ...group,
+            all: group.all.map((proxy) => {
+              const delay = groupResults.get(proxy.name)
+              if (delay === undefined) return proxy
+              return { ...proxy, history: [...proxy.history, { time, delay }].slice(-10) }
+            })
+          }
+        })
+      },
+      { revalidate: false }
+    )
+    const flushedNames = [...results.values()].flatMap((groupResults) => [
+      ...groupResults.keys()
+    ])
+    if (flushedNames.length > 0) {
+      setTestingProxies((prev) => {
+        const next = new Set(prev)
+        flushedNames.forEach((name) => next.delete(name))
+        return next
+      })
+    }
+  }, [mutate])
+
+  const scheduleFlushDelayResults = useCallback((): void => {
+    if (flushDelayTimer.current) return
+    flushDelayTimer.current = setTimeout(flushDelayResults, 200)
+  }, [flushDelayResults])
+
+  useEffect(() => {
+    return (): void => {
+      if (flushDelayTimer.current) clearTimeout(flushDelayTimer.current)
+    }
+  }, [])
+
   const onGroupDelay = useCallback(
     async (index: number): Promise<void> => {
       const group = groups[index]
@@ -379,9 +448,13 @@ const Proxies: React.FC = () => {
       const proxies = openedProxies.length > 0 ? openedProxies : group.all
       if (proxies.length === 0) return
 
+      if (!delayTestUseGroupApi) {
+        setTestingProxies((prev) => new Set([...prev, ...proxies.map((proxy) => proxy.name)]))
+      }
+
       if (openedProxies.length === 0) {
         if (rememberProxyGroupOpenStateRef.current) {
-          proxyGroupPageCache.isOpen[group.name] = true
+          rememberGroupOpenState(group.name, true)
         }
         setIsOpen((prev) => {
           const newOpen = [...prev]
@@ -407,17 +480,30 @@ const Proxies: React.FC = () => {
         }
 
         await runDelayTestsWithConcurrency(proxies, delayTestConcurrency, async (proxy) => {
+          let delay = 0
           try {
-            await mihomoProxyDelay(proxy.name, testUrl, getProviderName(proxy))
+            const result = await mihomoProxyDelay(proxy.name, testUrl, getProviderName(proxy))
+            delay = result?.delay ?? 0
           } catch {
-            // ignore
+            // 超时或失败记 0，与核心行为一致
           }
+          const groupResults =
+            pendingDelayResults.current.get(group.name) ?? new Map<string, number>()
+          groupResults.set(proxy.name, delay)
+          pendingDelayResults.current.set(group.name, groupResults)
+          scheduleFlushDelayResults()
         })
       } catch {
         // ignore
       } finally {
+        flushDelayResults()
         mutate()
         setGroupDelaying(index, false)
+        setTestingProxies((prev) => {
+          const next = new Set(prev)
+          proxies.forEach((proxy) => next.delete(proxy.name))
+          return next
+        })
       }
     },
     [
@@ -427,7 +513,9 @@ const Proxies: React.FC = () => {
       delayTestConcurrency,
       mutate,
       getDelayTestUrl,
-      setGroupDelaying
+      setGroupDelaying,
+      flushDelayResults,
+      scheduleFlushDelayResults
     ]
   )
 
@@ -447,7 +535,7 @@ const Proxies: React.FC = () => {
     const newVal = !currentlyOpen
     if (rememberProxyGroupOpenStateRef.current) {
       const groupName = groupsRef.current[index]?.name
-      if (groupName) proxyGroupPageCache.isOpen[groupName] = newVal
+      if (groupName) rememberGroupOpenState(groupName, newVal)
     }
     setIsOpen((prev) => {
       const newOpen = [...prev]
@@ -486,7 +574,7 @@ const Proxies: React.FC = () => {
         if (prev[index]) return prev
         if (rememberProxyGroupOpenStateRef.current) {
           const groupName = groupsRef.current[index]?.name
-          if (groupName) proxyGroupPageCache.isOpen[groupName] = true
+          if (groupName) rememberGroupOpenState(groupName, true)
         }
         const newOpen = [...prev]
         newOpen[index] = true
@@ -699,6 +787,7 @@ const Proxies: React.FC = () => {
           coloredTags={coloredTagsRef.current}
           resolvedNow={'now' in proxy ? groupNowMapRef.current[proxy.name] : undefined}
           selected={proxy.name === grps[groupIndex].now}
+          testing={testingProxiesRef.current.has(proxy.name)}
         />
       )
     }
