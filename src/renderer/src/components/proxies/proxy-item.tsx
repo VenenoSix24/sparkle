@@ -21,6 +21,7 @@ interface Props {
   selected: boolean
   resolvedNow?: string
   coloredTags?: boolean
+  testing?: boolean
 }
 
 const isGroup = (
@@ -83,7 +84,8 @@ const ProxyItem: React.FC<Props> = (props) => {
     onSelect,
     onProxyDelay,
     resolvedNow,
-    coloredTags = true
+    coloredTags = true,
+    testing = false
   } = props
   const shouldShowGroupSelectedProxy =
     showGroupSelectedProxy && isGroup(proxy) && Boolean(proxy.now)
@@ -210,6 +212,8 @@ const ProxyItem: React.FC<Props> = (props) => {
     })
   }
 
+  const pending = loading || testing
+
   const fixed = group.fixed && group.fixed === proxy.name
 
   return (
@@ -297,10 +301,10 @@ const ProxyItem: React.FC<Props> = (props) => {
                       variant="ghost"
                       data-color={delayColor(delay)}
                       className="h-8 w-8 min-w-8 p-0 text-xs"
-                      isPending={loading}
-                      isDisabled={loading}
+                      isPending={pending}
+                      isDisabled={pending}
                     >
-                      {loading ? <Spinner size="sm" color="current" /> : delayText(delay)}
+                      {pending ? <Spinner size="sm" color="current" /> : delayText(delay)}
                     </Button>
                   </div>
                 </>
@@ -359,10 +363,10 @@ const ProxyItem: React.FC<Props> = (props) => {
                         variant="ghost"
                         data-color={delayColor(delay)}
                         className="h-full w-8 min-w-8 p-0 text-sm"
-                        isPending={loading}
-                        isDisabled={loading}
+                        isPending={pending}
+                        isDisabled={pending}
                       >
-                        {loading ? <Spinner size="sm" color="current" /> : delayText(delay)}
+                        {pending ? <Spinner size="sm" color="current" /> : delayText(delay)}
                       </Button>
                     </div>
                   </div>
