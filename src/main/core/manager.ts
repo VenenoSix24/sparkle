@@ -193,6 +193,83 @@ function findTailscaleAuthUrlEnd(url: string): number {
   return -1
 }
 
+// 内核监听失败时进程不退出、界面照旧显示运行中，必须把这种故障变成可见的
+const coreListenFailureKeyPrefix = 'core-listen:'
+const coreListenFailurePattern = /Start ([^"]+?) (?:server|listening) error: ([^"]+)/
+const coreProxyListenPattern = /([^"]+?) proxy listening at: \S+:(\d+)/
+const coreListenFailureDelay = 3000
+const pendingCoreListenFailures = new Map<string, NodeJS.Timeout>()
+
+interface CoreListenStatus {
+  label: string
+  port?: string
+}
+
+function coreListenKey({ label, port }: CoreListenStatus): string {
+  return `${coreListenFailureKeyPrefix}${label.toLowerCase()}:${port ?? ''}`
+}
+
+function parseCoreListenFailure(text: string): (CoreListenStatus & { detail: string }) | undefined {
+  const matched = coreListenFailurePattern.exec(text)
+  if (!matched) return undefined
+  const detail = matched[2].trim()
+  return { label: matched[1].trim(), detail, port: /:(\d+)\b/.exec(detail)?.[1] }
+}
+
+function parseCoreListenSuccess(text: string): CoreListenStatus | undefined {
+  const matched = coreProxyListenPattern.exec(text)
+  if (matched) return { label: matched[1].trim(), port: matched[2] }
+  if (text.includes('Tun adapter listening at')) return { label: 'TUN' }
+  return undefined
+}
+
+// 快速重启时旧内核可能还没松开端口，先等一会儿，真起来了就不打扰用户
+function scheduleCoreListenFailureReport(status: CoreListenStatus & { detail: string }): void {
+  const key = coreListenKey(status)
+  if (notifiedCoreLogKeys.has(key) || pendingCoreListenFailures.has(key)) return
+  const timer = setTimeout(() => {
+    pendingCoreListenFailures.delete(key)
+    void reportCoreListenFailure(status)
+  }, coreListenFailureDelay)
+  timer.unref()
+  pendingCoreListenFailures.set(key, timer)
+}
+
+async function reportCoreListenFailure(status: CoreListenStatus & { detail: string }): Promise<void> {
+  const key = coreListenKey(status)
+  if (notifiedCoreLogKeys.has(key)) return
+  notifiedCoreLogKeys.add(key)
+
+  const target = status.port ? `${status.label} 端口 ${status.port}` : status.label
+  await appendAppLog(`[Manager]: core listener failed, ${target}: ${status.detail}\n`)
+  void showNotification({
+    title: status.port ? `内核没能监听 ${status.port} 端口` : `虚拟网卡没能启动`,
+    body: [
+      `${target} 启动失败：${status.detail}`,
+      '内核进程还在、界面也显示运行中，但这条通道上的流量都会失败。',
+      status.port
+        ? `多半是端口被别的程序占着（同时运行另一个客户端时很常见，它们默认都用 ${status.port}），退出其中一个再重启内核即可恢复。`
+        : '多半是虚拟网卡与自动路由被另一个带 TUN 的内核占着（两边的 fake-ip 段不能共存），退出其中一个再重启内核即可恢复。'
+    ].join('\n'),
+    variant: 'danger',
+    persistent: true
+  })
+}
+
+function clearCoreListenFailure(status: CoreListenStatus): void {
+  const key = coreListenKey(status)
+  const pending = pendingCoreListenFailures.get(key)
+  if (pending) {
+    clearTimeout(pending)
+    pendingCoreListenFailures.delete(key)
+  }
+  if (!notifiedCoreLogKeys.delete(key)) return
+
+  void appendAppLog(
+    `[Manager]: core listener recovered, ${status.label}${status.port ? ` ${status.port}` : ''}\n`
+  )
+}
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms)
@@ -669,6 +746,14 @@ export async function stopCore(force = false): Promise<void> {
 }
 
 function notifyCoreLog(source: CoreLogNotificationSource): void {
+  const listenText = source.text ?? source.message
+  if (listenText) {
+    const listenFailure = parseCoreListenFailure(listenText)
+    if (listenFailure) scheduleCoreListenFailureReport(listenFailure)
+    const listenSuccess = parseCoreListenSuccess(listenText)
+    if (listenSuccess) clearCoreListenFailure(listenSuccess)
+  }
+
   for (const rule of coreLogNotificationRules) {
     const result = rule.match(source)
     if (!result) continue
