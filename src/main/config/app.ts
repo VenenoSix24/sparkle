@@ -5,6 +5,7 @@ import { deepMerge } from '../utils/merge'
 import { defaultConfig } from '../utils/template'
 import { readFileSync, existsSync } from 'fs'
 import { systemCoreDefaultPath, systemCoreOnlyBuild } from '../../shared/build-flags'
+import { notifyConfigOperation } from '../resolve/webhook'
 import { setTrafficUsageEnabled } from '../traffic/recorder'
 
 let appConfig: AppConfig
@@ -78,14 +79,16 @@ export async function patchAppConfig(patch: Partial<AppConfig>): Promise<AppConf
   const previousPromise = writePromise
   const currentPromise = (async () => {
     await previousPromise
-    appConfig = applyBuildConfig(deepMerge(appConfig, patch))
-    await safeWriteConfig(stringifyYaml(appConfig))
+    const nextConfig = applyBuildConfig(deepMerge(structuredClone(appConfig), patch))
+    await safeWriteConfig(stringifyYaml(nextConfig))
+    appConfig = nextConfig
   })()
   writePromise = currentPromise.catch(() => {})
   await currentPromise
   if ('enableTrafficLogger' in patch) {
     setTrafficUsageEnabled(appConfig.enableTrafficLogger !== false)
   }
+  notifyConfigOperation('patchAppConfig', patch)
   return appConfig
 }
 

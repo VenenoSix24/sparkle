@@ -13,6 +13,7 @@ import SiderConfig from '@renderer/components/settings/sider-config'
 import SubStoreConfig from '@renderer/components/settings/substore-config'
 import AppearanceConfig from '@renderer/components/settings/appearance-confis'
 import ConfirmModal from '@renderer/components/base/base-confirm'
+import WebhookConfigPanel from '@renderer/components/settings/webhook-config'
 import { useState } from 'react'
 
 const openExternal = (url: string): void => {
@@ -100,6 +101,7 @@ const Settings: React.FC = () => {
       <SubStoreConfig />
       <SiderConfig />
       <WebdavConfig />
+      <WebhookConfigPanel />
       <AdvancedSettings />
       <ShortcutConfig />
       <Actions />
