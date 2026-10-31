@@ -1,21 +1,22 @@
-import { Button, Tooltip, Card } from '@heroui/react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Button, Card } from '@heroui/react'
+import { useLocation } from 'react-router-dom'
 import React from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { IoGitNetworkOutline } from 'react-icons/io5'
 import { useAppConfig } from '@renderer/hooks/use-app-config'
+import SiderItem from './sider-item'
 
 interface Props {
   iconOnly?: boolean
+  expanded?: boolean
 }
 
 const NetworkCard: React.FC<Props> = (props) => {
-  const { iconOnly } = props
+  const { iconOnly, expanded } = props
   const { appConfig } = useAppConfig()
   const { networkCardStatus = 'col-span-1', disableAnimation = false } = appConfig || {}
   const location = useLocation()
-  const navigate = useNavigate()
   const match = location.pathname.includes('/network')
   const {
     attributes,
@@ -30,22 +31,13 @@ const NetworkCard: React.FC<Props> = (props) => {
 
   if (iconOnly) {
     return (
-      <div className={`${networkCardStatus} flex justify-center`}>
-        <Tooltip delay={0}>
-          <Button
-            size="sm"
-            isIconOnly
-            onPress={() => {
-              navigate('/network')
-            }}
-            variant={match ? 'primary' : 'ghost'}
-            data-color={match ? 'primary' : 'default'}
-          >
-            <IoGitNetworkOutline className="text-[20px]" />
-          </Button>
-          <Tooltip.Content placement="right">{'网络信息'}</Tooltip.Content>
-        </Tooltip>
-      </div>
+      <SiderItem
+        className={networkCardStatus}
+        title="网络信息"
+        route="/network"
+        icon={<IoGitNetworkOutline className="text-[20px]" />}
+        expanded={expanded}
+      />
     )
   }
 
@@ -97,5 +89,7 @@ const NetworkCard: React.FC<Props> = (props) => {
 }
 
 export default React.memo(NetworkCard, (prevProps, nextProps) => {
-  return prevProps.iconOnly === nextProps.iconOnly
+  return (
+    prevProps.iconOnly === nextProps.iconOnly && prevProps.expanded === nextProps.expanded
+  )
 })
