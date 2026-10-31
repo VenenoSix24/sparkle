@@ -58,6 +58,12 @@ import {
   isUpdaterFinishedLog
 } from './startup-chain'
 import { createServiceCoreRuntime } from './service-core-runtime'
+import {
+  emitWebhook,
+  flushWebhooks,
+  notifyCoreStarted,
+  notifyCoreStopped
+} from '../resolve/webhook'
 
 const ctlParam = process.platform === 'win32' ? '-ext-ctl-pipe' : '-ext-ctl-unix'
 
@@ -193,40 +199,59 @@ function findTailscaleAuthUrlEnd(url: string): number {
   return -1
 }
 
-// 内核监听失败时进程不退出、界面照旧显示运行中，必须把这种故障变成可见的
+// 监听失败不会退出内核，界面仍显示运行中，这类故障只能由应用主动暴露
 const coreListenFailureKeyPrefix = 'core-listen:'
-const coreListenFailurePattern = /Start ([^"]+?) (?:server|listening) error: ([^"]+)/
-const coreProxyListenPattern = /([^"]+?) proxy listening at: \S+:(\d+)/
+const coreListenFailurePattern =
+  /Start ([^"]+?) (?:server|listening)(\((?:TCP|UDP)\))? error: ([^"]+)/
+const coreProxyListenPattern =
+  /([^"]+?) (?:proxy|server|inbound)(\((?:TCP|UDP)\))? listening at: \S*:(\d+)/
 const coreListenFailureDelay = 3000
+// 故障持续时每 10 分钟再提醒一次，兼顾自动重启循环不至于刷屏
+const coreListenAlertCooldown = 10 * 60 * 1000
 const pendingCoreListenFailures = new Map<string, NodeJS.Timeout>()
+const notifiedCoreListenFailures = new Map<string, number>()
 
 interface CoreListenStatus {
   label: string
   port?: string
 }
 
-function coreListenKey({ label, port }: CoreListenStatus): string {
-  return `${coreListenFailureKeyPrefix}${label.toLowerCase()}:${port ?? ''}`
+// 同一监听器的成功行与失败行用词不同（Redirect / Redir），统一到一处
+const coreListenLabelAliases: Record<string, string> = { redirect: 'redir' }
+
+// 成功行会带 [tag] 后缀，去掉才能和失败行落到同一个键
+function normalizeCoreListenLabel(label: string): string {
+  const normalized = label.replace(/\[[^\]]*\]/g, '').trim().toLowerCase()
+  return coreListenLabelAliases[normalized] ?? normalized
+}
+
+// 端口只在提示里展示，键里不参与，避免失败行不带端口时对不上
+function coreListenKey(label: string): string {
+  return `${coreListenFailureKeyPrefix}${normalizeCoreListenLabel(label)}`
 }
 
 function parseCoreListenFailure(text: string): (CoreListenStatus & { detail: string }) | undefined {
   const matched = coreListenFailurePattern.exec(text)
   if (!matched) return undefined
-  const detail = matched[2].trim()
-  return { label: matched[1].trim(), detail, port: /:(\d+)\b/.exec(detail)?.[1] }
+  const detail = matched[3].trim()
+  return {
+    label: `${matched[1]}${matched[2] ?? ''}`.trim(),
+    detail,
+    port: /:(\d+)\b/.exec(detail)?.[1]
+  }
 }
 
 function parseCoreListenSuccess(text: string): CoreListenStatus | undefined {
   const matched = coreProxyListenPattern.exec(text)
-  if (matched) return { label: matched[1].trim(), port: matched[2] }
+  if (matched) return { label: `${matched[1]}${matched[2] ?? ''}`.trim(), port: matched[3] }
   if (text.includes('Tun adapter listening at')) return { label: 'TUN' }
   return undefined
 }
 
-// 快速重启时旧内核可能还没松开端口，先等一会儿，真起来了就不打扰用户
+// 端口可能被尚未退出的旧内核占用，留出启动窗口再判定，避免误报
 function scheduleCoreListenFailureReport(status: CoreListenStatus & { detail: string }): void {
-  const key = coreListenKey(status)
-  if (notifiedCoreLogKeys.has(key) || pendingCoreListenFailures.has(key)) return
+  const key = coreListenKey(status.label)
+  if (pendingCoreListenFailures.has(key) || isCoreListenAlertCoolingDown(key)) return
   const timer = setTimeout(() => {
     pendingCoreListenFailures.delete(key)
     void reportCoreListenFailure(status)
@@ -236,20 +261,21 @@ function scheduleCoreListenFailureReport(status: CoreListenStatus & { detail: st
 }
 
 async function reportCoreListenFailure(status: CoreListenStatus & { detail: string }): Promise<void> {
-  const key = coreListenKey(status)
-  if (notifiedCoreLogKeys.has(key)) return
-  notifiedCoreLogKeys.add(key)
+  const key = coreListenKey(status.label)
+  if (isCoreListenAlertCoolingDown(key)) return
+  notifiedCoreListenFailures.set(key, Date.now())
 
   const target = status.port ? `${status.label} 端口 ${status.port}` : status.label
   await appendAppLog(`[Manager]: core listener failed, ${target}: ${status.detail}\n`)
   void showNotification({
-    title: status.port ? `内核没能监听 ${status.port} 端口` : `虚拟网卡没能启动`,
+    id: key,
+    title: status.port ? `内核没能监听 ${status.port} 端口` : '虚拟网卡没能启动',
     body: [
       `${target} 启动失败：${status.detail}`,
       '内核进程还在、界面也显示运行中，但这条通道上的流量都会失败。',
       status.port
-        ? `多半是端口被别的程序占着（同时运行另一个客户端时很常见，它们默认都用 ${status.port}），退出其中一个再重启内核即可恢复。`
-        : '多半是虚拟网卡与自动路由被另一个带 TUN 的内核占着（两边的 fake-ip 段不能共存），退出其中一个再重启内核即可恢复。'
+        ? '多半是端口被别的程序占着，退出占用方后重启内核即可恢复。'
+        : '多半是虚拟网卡与自动路由被另一个带 TUN 的内核占着，退出其中一个后重启内核即可恢复。'
     ].join('\n'),
     variant: 'danger',
     persistent: true
@@ -257,17 +283,30 @@ async function reportCoreListenFailure(status: CoreListenStatus & { detail: stri
 }
 
 function clearCoreListenFailure(status: CoreListenStatus): void {
-  const key = coreListenKey(status)
+  const key = coreListenKey(status.label)
   const pending = pendingCoreListenFailures.get(key)
   if (pending) {
     clearTimeout(pending)
     pendingCoreListenFailures.delete(key)
   }
-  if (!notifiedCoreLogKeys.delete(key)) return
+  if (!notifiedCoreListenFailures.delete(key)) return
 
+  dismissNotification(key)
   void appendAppLog(
     `[Manager]: core listener recovered, ${status.label}${status.port ? ` ${status.port}` : ''}\n`
   )
+}
+
+function isCoreListenAlertCoolingDown(key: string): boolean {
+  const notifiedAt = notifiedCoreListenFailures.get(key)
+  return notifiedAt !== undefined && Date.now() - notifiedAt < coreListenAlertCooldown
+}
+
+function clearPendingCoreListenFailures(): void {
+  for (const timer of pendingCoreListenFailures.values()) {
+    clearTimeout(timer)
+  }
+  pendingCoreListenFailures.clear()
 }
 
 function delay(ms: number): Promise<void> {
@@ -290,7 +329,18 @@ async function startMihomoApiStreams(): Promise<void> {
   directCoreState.retry = 10
 }
 
-async function completeCoreInitialization(logLevel?: LogLevel): Promise<void> {
+async function completeCoreInitialization(
+  logLevel?: LogLevel,
+  child?: ChildProcess
+): Promise<void> {
+  if (
+    child?.pid &&
+    child === directCoreState.child &&
+    child.exitCode === null &&
+    child.signalCode === null
+  ) {
+    notifyCoreStarted('direct', child.pid)
+  }
   const tasks: Promise<unknown>[] = [
     delay(100).then(() => {
       mainWindow?.webContents.send('groupsUpdated')
@@ -498,6 +548,7 @@ export async function startCore(detached = false): Promise<Promise<void>[]> {
   if (useServiceCore) {
     const serviceProfile: ServiceCoreLaunchProfile = {
       core_path: corePath,
+      skip_hardening: systemCoreOnlyBuild || core === 'system',
       args: spawnArgs,
       mode: serviceRunMode,
       safe_paths: safePaths,
@@ -565,6 +616,7 @@ export async function startCore(detached = false): Promise<Promise<void>[]> {
   child.stderr?.on('data', captureStartupOutput)
   child.once('error', (error) => {
     spawnError = error
+    emitWebhook('lifecycle', 'core.failed', { mode: 'direct', reason: 'spawn_failed' }, 'failure')
   })
   const startupFailure = (reason: unknown): Error => {
     const details = startupOutput.trim()
@@ -589,6 +641,15 @@ export async function startCore(detached = false): Promise<Promise<void>[]> {
     })
   }
   child.on('close', async (code, signal) => {
+    if (!initialized && !spawnError) {
+      emitWebhook(
+        'lifecycle',
+        'core.failed',
+        { mode: 'direct', reason: 'startup_failed' },
+        'failure'
+      )
+    }
+    notifyCoreStopped('direct', child.pid, 'exited')
     flushDirectCoreLogNotifications()
     await appendAppLog(`[Manager]: Core closed, code: ${code}, signal: ${signal}\n`)
     if (!configurationRejected && directCoreState.retry) {
@@ -661,7 +722,7 @@ export async function startCore(detached = false): Promise<Promise<void>[]> {
           await startMihomoApiStreams()
           await waitForMihomoReady()
           initialized = true
-          resolve([completeCoreInitialization(logLevel)])
+          resolve([completeCoreInitialization(logLevel, child)])
         }
         handleLine().catch(reject)
       })
@@ -680,7 +741,7 @@ export async function startCore(detached = false): Promise<Promise<void>[]> {
         .then(async () => {
           initialized = true
           await startMihomoApiStreams()
-          resolve([completeCoreInitialization(logLevel)])
+          resolve([completeCoreInitialization(logLevel, child)])
         })
         .catch((error) => reject(startupFailure(error)))
     })
@@ -691,6 +752,7 @@ export async function startCore(detached = false): Promise<Promise<void>[]> {
 
 export async function stopCore(force = false): Promise<void> {
   serviceCoreRuntime.pauseAutoResume()
+  clearPendingCoreListenFailures()
 
   try {
     if (!force) {
@@ -707,6 +769,7 @@ export async function stopCore(force = false): Promise<void> {
   if (shouldStopServiceCore) {
     try {
       await stopServiceCore()
+      notifyCoreStopped('service')
     } catch (error) {
       await appendAppLog(`[Manager]: stop service core failed, ${error}\n`)
     } finally {
@@ -719,6 +782,9 @@ export async function stopCore(force = false): Promise<void> {
   if (child) {
     directCoreState.child = undefined
     await stopChildProcess(child)
+    if (child.exitCode !== null || child.signalCode !== null) {
+      notifyCoreStopped('direct', child.pid)
+    }
   }
 
   await getAxios(true).catch(() => {})
@@ -746,9 +812,14 @@ export async function stopCore(force = false): Promise<void> {
 }
 
 function notifyCoreLog(source: CoreLogNotificationSource): void {
-  const listenText = source.text ?? source.message
+  // 服务模式的日志正文可能放在 message，也可能放在 data 的某个字段里
+  const listenText = source.text ?? [source.message, ...Object.values(source.data ?? {})].join('\n')
   if (listenText) {
-    const listenFailure = parseCoreListenFailure(listenText)
+    // TUN 权限失败和平台不支持都属于「不是端口被抢」，前者已有专门处理，后者无法修复
+    const listenFailure =
+      isTunPermissionError(listenText) || listenText.includes('not supported on current platform')
+        ? undefined
+        : parseCoreListenFailure(listenText)
     if (listenFailure) scheduleCoreListenFailureReport(listenFailure)
     const listenSuccess = parseCoreListenSuccess(listenText)
     if (listenSuccess) clearCoreListenFailure(listenSuccess)
@@ -832,13 +903,14 @@ export async function restartCore(): Promise<void> {
     const promises = await startCore()
     await Promise.all(promises)
   } catch (e) {
+    emitWebhook('lifecycle', 'core.failed', { reason: 'restart_failed' }, 'failure')
     void showNotification({ title: '内核启动出错', body: `${e}`, variant: 'danger' })
   }
 }
 
 export async function keepCoreAlive(): Promise<void> {
   try {
-    const { corePermissionMode = 'elevated' } = await getAppConfig()
+    const { corePermissionMode = 'elevated', webhook } = await getAppConfig()
     if (corePermissionMode === 'service') {
       return
     }
@@ -846,8 +918,37 @@ export async function keepCoreAlive(): Promise<void> {
     await startCore(true)
     if (directCoreState.child?.pid) {
       await writeFile(path.join(dataDir(), 'core.pid'), directCoreState.child.pid.toString())
+      if (
+        webhook?.targets?.some(
+          (target) =>
+            target.enabled !== false &&
+            !!target.url &&
+            (!target.categories || target.categories.includes('lifecycle'))
+        )
+      ) {
+        const child = directCoreState.child
+        const deadline = Date.now() + 3000
+        while (Date.now() < deadline) {
+          const remaining = deadline - Date.now()
+          try {
+            await (
+              await getAxios()
+            ).get('/version', { timeout: remaining, signal: AbortSignal.timeout(remaining) })
+            if (
+              child === directCoreState.child &&
+              child.exitCode === null &&
+              child.signalCode === null
+            )
+              notifyCoreStarted('direct', child.pid)
+            break
+          } catch {
+            await delay(100)
+          }
+        }
+      }
     }
   } catch (e) {
+    emitWebhook('lifecycle', 'core.failed', { reason: 'retained_start_failed' }, 'failure')
     void showNotification({ title: '内核启动出错', body: `${e}`, variant: 'danger' })
   }
 }
@@ -855,6 +956,8 @@ export async function keepCoreAlive(): Promise<void> {
 export async function quitWithoutCore(): Promise<void> {
   await keepCoreAlive()
   await startMonitor(true)
+  emitWebhook('application', 'app.quit', { keepCore: true })
+  await flushWebhooks()
   app.exit()
 }
 

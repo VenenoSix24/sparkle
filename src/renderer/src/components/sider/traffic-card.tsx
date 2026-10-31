@@ -1,23 +1,24 @@
 import { Button, Tooltip, Card } from '@heroui/react'
 import BorderSwitch from '@renderer/components/base/border-swtich'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import React from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useAppConfig } from '@renderer/hooks/use-app-config'
 import { MdOutlineDataUsage } from 'react-icons/md'
+import SiderItem from './sider-item'
 
 interface Props {
   iconOnly?: boolean
+  expanded?: boolean
 }
 
 const TrafficCard: React.FC<Props> = (props) => {
-  const { iconOnly } = props
+  const { iconOnly, expanded } = props
   const { appConfig, patchAppConfig } = useAppConfig()
   const { enableTrafficLogger = true, trafficCardStatus = 'col-span-1', disableAnimation = false } =
     appConfig || {}
   const location = useLocation()
-  const navigate = useNavigate()
   const match = location.pathname.includes('/traffic')
   const {
     attributes,
@@ -50,22 +51,15 @@ const TrafficCard: React.FC<Props> = (props) => {
 
   if (iconOnly) {
     return (
-      <div className={`${trafficCardStatus} flex justify-center`}>
-        <Tooltip delay={0}>
-          <Button
-            size="sm"
-            isIconOnly
-            onPress={() => {
-              navigate('/traffic')
-            }}
-            variant={match ? 'primary' : 'ghost'}
-            data-color={match ? 'primary' : 'default'}
-          >
-            <MdOutlineDataUsage className="text-[20px]" />
-          </Button>
-          <Tooltip.Content placement="right">{'用量统计'}</Tooltip.Content>
-        </Tooltip>
-      </div>
+      <SiderItem
+        className={trafficCardStatus}
+        title="用量统计"
+        route="/traffic"
+        icon={<MdOutlineDataUsage className="text-[20px]" />}
+        expanded={expanded}
+      >
+        {loggerSwitch}
+      </SiderItem>
     )
   }
 
@@ -118,5 +112,7 @@ const TrafficCard: React.FC<Props> = (props) => {
 }
 
 export default React.memo(TrafficCard, (prevProps, nextProps) => {
-  return prevProps.iconOnly === nextProps.iconOnly
+  return (
+    prevProps.iconOnly === nextProps.iconOnly && prevProps.expanded === nextProps.expanded
+  )
 })

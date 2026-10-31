@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# 掉网现场取证：sparkle 连不通网络时跑一次，把内核/端口/虚拟网卡/系统代理/DNS/出口链路一次抓齐。
-# 需要 root 才能看到占用端口的进程（Clash Party 的内核以 root 运行），脚本会自动提示补哪条命令。
+# 掉网现场取证：一次抓齐内核进程、端口占用、虚拟网卡、系统代理、DNS 与出口链路。
+# 占用端口的进程可能以 root 运行，此时需 sudo 才能看到，脚本会提示对应命令。
 # 用法: bash scripts/diagnose-network.sh [混合端口，默认 7890]
 
 set -u
@@ -84,11 +84,11 @@ run() { echo "\$ $*"; eval "$@" 2>&1 | sed 's/^/    /'; echo; }
   echo "## 9. 判断"
   SIDE="$(pgrep -fl 'sidecar/mihomo' 2>/dev/null | wc -l | tr -d ' ')"
   if [ "$SIDE" -ge 2 ]; then
-    echo "    · 同时有 $SIDE 个内核进程：两个客户端（含 Clash Party）默认都用 7890 + TUN，后启动的那个抢不到端口时"
-    echo "      内核进程仍然活着、界面仍显示运行中，但实际没有任何代理端口 —— 这就是连不通网的原因。"
+    echo "    · 同时存在 $SIDE 个内核进程：多个客户端默认都用 7890 + TUN，后启动的抢不到端口时"
+    echo "      内核仍然存活、界面仍显示运行中，但没有任何代理端口在监听。"
   fi
-  if ! nc -z -G 2 127.0.0.1 "$PORT" 2>/dev/null; then
-    echo "    · 没有内核监听 127.0.0.1:$PORT：内核侧监听已丢失（多见于端口被其它程序抢走 / 启动时绑定失败）。"
+  if ! nc -z -G 2 [IP] "$PORT" 2>/dev/null; then
+    echo "    · 没有进程监听 [IP]:$PORT：监听已丢失（端口被抢占或启动时绑定失败）。"
   fi
 } | tee "$OUT"
 

@@ -15,6 +15,8 @@ import ConnCard from './conn-card'
 import DNSCard from './dns-card'
 import LogCard from './log-card'
 import MihomoCoreCard from './mihomo-core-card'
+import GatewayCard from './gateway-card'
+import { supportsGateway } from '@renderer/utils/init'
 import OverrideCard from './override-card'
 import ProfileCard from './profile-card'
 import ProxyCard from './proxy-card'
@@ -67,6 +69,7 @@ const siderCardRouteMap = {
   'profile-card': '/profiles',
   'proxy-card': '/proxies',
   'mihomo-core-card': '/mihomo',
+  'gateway-card': '/gateway',
   'conn-card': '/connections',
   'dns-card': '/dns',
   'sniff-card': '/sniffer',
@@ -89,6 +92,7 @@ const componentMap = {
   profile: ProfileCard,
   proxy: ProxyCard,
   mihomo: MihomoCoreCard,
+  gateway: GatewayCard,
   connection: ConnCard,
   dns: DNSCard,
   sniff: SniffCard,
@@ -103,16 +107,26 @@ const componentMap = {
 
 interface Props {
   iconOnly?: boolean
+  expanded?: boolean
 }
 
-export default function SiderCards({ iconOnly = false }: Props): React.JSX.Element {
+export default function SiderCards({
+  iconOnly = false,
+  expanded = false
+}: Props): React.JSX.Element {
   const { appConfig, patchAppConfig } = useAppConfig()
-  // 旧配置缺新卡片 key，按默认顺序补到末尾
+  // 旧配置缺新卡片 key，按默认顺序补到末尾；网关卡片只在支持的平台出现
   const siderOrder = useMemo(() => {
     const saved = appConfig?.siderOrder
-    if (!saved) return defaultSiderOrder
-    const missing = defaultSiderOrder.filter((key) => !saved.includes(key))
-    return [...saved.filter((key) => key in componentMap), ...missing]
+    const merged = saved
+      ? [
+          ...saved.filter((key) => key in componentMap),
+          ...defaultSiderOrder.filter((key) => !saved.includes(key))
+        ]
+      : [...defaultSiderOrder]
+    const withGateway =
+      supportsGateway && !merged.includes('gateway') ? [...merged, 'gateway'] : merged
+    return withGateway.filter((key) => key !== 'gateway' || supportsGateway)
   }, [appConfig?.siderOrder])
   const [order, setOrder] = useState(siderOrder)
   const gridRef = useRef<HTMLDivElement>(null)
@@ -182,7 +196,7 @@ export default function SiderCards({ iconOnly = false }: Props): React.JSX.Eleme
   const cards = order.map((key: string) => {
     const Component = componentMap[key]
     if (!Component) return null
-    return <Component key={key} iconOnly={iconOnly} />
+    return <Component key={key} iconOnly={iconOnly} expanded={expanded} />
   })
 
   if (iconOnly) {
